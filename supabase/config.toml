@@ -1,0 +1,14 @@
+# Supabase CLI 로컬 개발용 최소 설정 (`supabase init` 결과를 덮어써도 됩니다)
+project_id = "cnu-festival-orderservice"
+
+[api]
+schemas = ["public", "graphql_public"]
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000"]
+# 공개 회원가입 금지 — 직원 계정은 관리자가 직접 발급한다
+enable_signup = false
+
+[auth.email]
+enable_signup = false
