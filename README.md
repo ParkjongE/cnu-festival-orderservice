@@ -122,3 +122,5 @@ scripts/realtime-load.mjs  동시 연결·반영 지연 측정
 
 - [docs/OPERATIONS.md](docs/OPERATIONS.md) — 직원 계정 발급·비활성화, 운영 전 점검표, 직원용 사용 안내
 - [docs/TESTING.md](docs/TESTING.md) — 확인한 테스트, 아직 확인하지 못한 항목, 부하 시험 시나리오
+- [docs/SECURITY.md](docs/SECURITY.md) — 보안 점검 결과와 남은 위험
+- `qr/` — 손님용 공통 QR (초록·검정 PNG 2048px, SVG). 오류 정정 H

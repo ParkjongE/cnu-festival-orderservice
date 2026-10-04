@@ -1,9 +1,14 @@
+# 외부로 연결되는 곳은 Supabase(API·Realtime)뿐이다. 프로젝트를 바꾸면 connect-src 도 바꾼다.
+# script-src 의 'unsafe-inline' 은 Next.js 정적 내보내기가 넣는 초기화 스크립트 때문에 필요하다(정적 파일이라 nonce 를 쓸 수 없음).
 # Cloudflare 정적 자산 응답 헤더 (https://developers.cloudflare.com/workers/static-assets/headers/)
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: SAMEORIGIN
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://defjljpadoixhxooxggy.supabase.co wss://defjljpadoixhxooxggy.supabase.co; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'
 
 /admin
   Cache-Control: no-store
