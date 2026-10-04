@@ -1,0 +1,13 @@
+// Cloudflare Workers 정적 자산 배포 설정 (서버 코드 없음).
+// `npm run build` 로 만든 out/ 을 그대로 올린다. 정적 파일 요청은 Worker 실행 없이 제공된다.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cnu-festival-orderservice",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./out",
+    // /admin/login → admin/login.html
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

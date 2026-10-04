@@ -31,7 +31,7 @@ npm run build
 
 ## Supabase 연결
 
-1. Supabase 프로젝트 생성 (리전은 서울 `ap-northeast-2` 권장). 플랜·한도는 [공식 문서](https://supabase.com/docs/guides/realtime/limits)에서 다시 확인하세요.
+1. Supabase 프로젝트 생성 (리전은 서울 `ap-northeast-2` 권장). 운영 프로젝트: `defjljpadoixhxooxggy` (서울, 무료). 플랜·한도는 [공식 문서](https://supabase.com/docs/guides/realtime/limits)에서 다시 확인하세요.
 2. 마이그레이션 적용 — 둘 중 하나
    - CLI: `supabase link --project-ref <ref>` → `supabase db push`
    - 대시보드 SQL Editor에서 `supabase/migrations/` 파일을 **이름 순서대로** 실행
@@ -47,24 +47,27 @@ npm run build
 
 필요한 키는 **URL + Publishable(anon) 키 두 개뿐**입니다. service_role/secret 키는 쓰지 않습니다.
 
-## 배포 (Cloudflare Pages)
+## 배포 (Cloudflare Workers 정적 자산)
+
+운영 주소: **https://cnu-festival-orderservice.whdgml9404.workers.dev**
 
 앱은 서버 코드가 없는 정적 사이트입니다 (`npm run build` → `out/`). 데이터는 브라우저가 Supabase와 직접 주고받습니다.
+Cloudflare Pages는 Workers로 통합되는 중이라, `wrangler.jsonc`의 정적 자산(assets) 설정으로 올립니다. 정적 파일 요청은 Worker 실행 없이 제공됩니다.
 
 ```bash
-npx wrangler login                                   # 최초 1회
-npm run build                                        # .env.local 의 NEXT_PUBLIC_* 값이 번들에 들어감
-npx wrangler pages deploy out --project-name cnu-festival-orderservice --branch main
+npx wrangler login     # 최초 1회 (터미널 앱에서)
+npm run build          # .env.local 의 NEXT_PUBLIC_* 값이 번들에 들어감
+npx wrangler deploy
 ```
 
 - `NEXT_PUBLIC_` 값은 **빌드할 때** 들어가므로, 값을 바꾸면 다시 빌드·배포합니다.
 - 보안·캐시 헤더는 `public/_headers` (Cloudflare 형식)에 있습니다.
-- 배포 URL(`https://cnu-festival-orderservice.pages.dev`)을 Supabase Auth의 Site URL에 반영하세요.
-- 확정된 URL로 공통 QR을 만들고 실제 인쇄 크기로 iPhone·Android에서 스캔해 보세요.
+- 운영 주소를 Supabase Auth의 Site URL에 반영하세요.
+- 운영 주소로 공통 QR을 만들고 실제 인쇄 크기로 iPhone·Android에서 스캔해 보세요.
 
 ### 비용 판단 (2026-10 공식 가격 페이지 기준, 배포 전 재확인)
 
-- **Cloudflare Pages 무료**: 정적 사이트 무제한 요청, 상업적 이용 제한 문구 없음. (Vercel Hobby는 ‘개인·비상업적 용도’로 한정돼 음식 판매 부스에는 맞지 않음 → Vercel을 쓰려면 Pro 월 $20)
+- **Cloudflare 무료 (Workers 정적 자산)**: 정적 파일 요청 무료·무제한, 상업적 이용 제한 문구 없음. (Vercel Hobby는 ‘개인·비상업적 용도’로 한정돼 음식 판매 부스에는 맞지 않음 → Vercel을 쓰려면 Pro 월 $20)
 - **Supabase 무료**: 동시 연결 200, 초당 메시지 100, 월 메시지 200만, DB 500MB, 1주 비활성 시 일시정지.
   - 손님은 **내 번호 변경만** 실시간으로 받습니다. 상태 변경 1번에 메시지가 손님 수만큼이 아니라 해당 손님에게 1건만 나가므로 초당 100건 한도에 여유가 있습니다.
   - 목록(수령 가능·최근 수령 완료)은 `public_board` RPC 한 번으로 10~15초마다 갱신합니다.
