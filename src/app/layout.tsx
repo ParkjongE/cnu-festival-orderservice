@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
 import { BRAND_NAME, EVENT_NAME } from "@/lib/domain/constants";
+import { LegacyBrowserNotice } from "@/components/LegacyBrowserNotice";
 import "./globals.css";
 
 // 두 글꼴 모두 SIL Open Font License (Google Fonts) — 상업적 사용·웹 임베딩 가능
@@ -35,7 +36,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className={`${display.variable} ${sans.variable} antialiased`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        {children}
+        <LegacyBrowserNotice />
+      </body>
     </html>
   );
 }

@@ -3,9 +3,9 @@
 //   CLIENTS=100 STAFF_EMAIL=... STAFF_PASSWORD=... node --env-file=.env.local scripts/realtime-load.mjs
 //
 // 실제 앱과 같은 구조를 흉내 낸다.
-// - 손님 N명이 각자 별도 WebSocket 으로 '회차 변경 + 자기 번호 변경'만 구독
+// - 손님 N명이 각자 별도 WebSocket 으로 '자기 번호' Broadcast 채널만 구독
 // - 손님 N명이 10~15초마다 public_board 를 조회 (POLL=0 으로 끄기)
-// - 직원 계정이 시험 주문 N개를 만들고 하나씩 '조리 완료' → 해당 손님이 받기까지의 시간을 잰다
+// - 직원 계정이 시험 주문 N개를 만들고 하나씩 '조리 완료' → 해당 손님 화면에 '조리 완료'가 보이기까지(신호 + 재조회) 시간을 잰다
 // - 끝나면 시험 주문을 모두 '취소'(사유: 부하 시험)로 정리한다
 // 결과: 구독 성공/실패, 이벤트 수신률, 지연 p50/p95/최대, 주기 조회 오류 수
 import { createClient } from "@supabase/supabase-js";
@@ -44,20 +44,27 @@ console.log(`시험 주문 ${CLIENTS}개 생성 (${base}~${base + CLIENTS - 1}�
 
 const sentAt = new Map(); // order_number → ms
 const latency = [];
+const seen = new Set();
 let subscribed = 0;
 let failed = 0;
 let pollErrors = 0;
 let polls = 0;
 const clients = [];
 await Promise.all(
-  orders.map((o, i) => {
+  orders.map((o) => {
     const c = createClient(url, key, opts);
     clients.push(c);
     return new Promise((resolve) => {
-      c.channel(`load-${i}`, { config: { postgres_changes_options: { wait: true } } })
-        .on("postgres_changes", { event: "*", schema: "public", table: "public_service_state" }, () => {})
-        .on("postgres_changes", { event: "*", schema: "public", table: "public_order_status", filter: `order_number=eq.${o.order_number}` }, (p) => {
-          if (p.new?.status === "ready" && sentAt.has(o.order_number)) latency.push(Date.now() - sentAt.get(o.order_number));
+      c.channel(`order:${sessionId}:${o.order_number}`)
+        .on("broadcast", { event: "changed" }, () => {
+          // 앱과 같게: 신호를 받으면 서버에서 다시 조회하고, '조리 완료'가 보이는 순간까지를 잰다
+          if (!sentAt.has(o.order_number) || seen.has(o.order_number)) return;
+          void c.rpc("public_board", { p_picked_limit: 1, p_my_number: o.order_number }).then(({ data }) => {
+            if (data?.mine?.status === "ready" && !seen.has(o.order_number)) {
+              seen.add(o.order_number);
+              latency.push(Date.now() - sentAt.get(o.order_number));
+            }
+          });
         })
         .subscribe((status) => {
           if (status === "SUBSCRIBED") subscribed++;

@@ -5,7 +5,7 @@ import { POLL_MAX_MS, POLL_MIN_MS } from "@/lib/domain/constants";
 import type { ChannelHealth } from "@/lib/backend/types";
 
 /** 손님·직원 화면에 보여줄 연결 상태 */
-export type ConnectionState = "connecting" | "live" | "degraded" | "offline";
+export type ConnectionState = "connecting" | "live" | "idle" | "degraded" | "offline";
 
 function subscribeOnline(cb: () => void) {
   window.addEventListener("online", cb);
@@ -80,6 +80,7 @@ export function useConnectionState(health: ChannelHealth | null): ConnectionStat
   }, []);
   if (!online) return "offline";
   if (health === "live") return "live";
+  if (health === "idle") return "idle";
   if (health === null && !graceOver) return "connecting";
   return "degraded";
 }

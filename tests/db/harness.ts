@@ -17,6 +17,11 @@ const SUPABASE_STUB = `
   grant usage on schema auth to anon, authenticated;
   grant execute on function auth.uid() to anon, authenticated;
   grant usage on schema public to anon, authenticated;
+  -- Supabase Realtime 의 realtime.send 대역: 보낸 신호를 테이블에 기록한다
+  create schema realtime;
+  create table realtime.sent (topic text, event text, payload jsonb);
+  create function realtime.send(payload jsonb, event text, topic text, private boolean) returns void
+    language sql as $$ insert into realtime.sent values (topic, event, payload) $$;
   alter default privileges in schema public grant all on tables to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
 `;
@@ -29,7 +34,9 @@ export async function createDb() {
   const db = new PGlite();
   await db.exec(SUPABASE_STUB);
   const dir = join(process.cwd(), "supabase", "migrations");
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of readdirSync(dir)
+    .filter((f) => f.endsWith(".sql"))
+    .sort()) {
     await db.exec(readFileSync(join(dir, file), "utf8"));
   }
   await db.exec(`

@@ -283,3 +283,27 @@ describe("public_board (손님 한 번 조회)", () => {
     });
   });
 });
+
+describe("Broadcast 신호", () => {
+  it("상태가 바뀔 때마다 해당 번호 채널에 신호를 보내고, 신호 실패가 주문 저장을 막지 않는다", async () => {
+    const sid = await openSession();
+    const o = (await createOrder(sid, 23)).order!;
+    await move(o, "ready");
+    // 신호 기록 테이블은 대역이므로 관리자 연결로 바로 읽는다
+    const sent = (
+      await db.query<{ topic: string; event: string; payload: { revision: number } }>(
+        `select topic, event, payload from realtime.sent order by (payload->>'revision')::int`,
+      )
+    ).rows;
+    expect(sent).toEqual([
+      { topic: `order:${sid}:23`, event: "changed", payload: { revision: 1 } },
+      { topic: `order:${sid}:23`, event: "changed", payload: { revision: 2 } },
+    ]);
+
+    // realtime.send 가 실패해도 주문 변경은 저장된다
+    await db.exec(`create or replace function realtime.send(payload jsonb, event text, topic text, private boolean)
+      returns void language plpgsql as $$ begin raise exception 'realtime down'; end $$;`);
+    const r = await createOrder(sid, 24);
+    expect(r.ok).toBe(true);
+  });
+});

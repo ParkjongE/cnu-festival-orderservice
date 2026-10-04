@@ -35,13 +35,13 @@ npm run build
 2. 마이그레이션 적용 — 둘 중 하나
    - CLI: `supabase link --project-ref <ref>` → `supabase db push`
    - 대시보드 SQL Editor에서 `supabase/migrations/` 파일을 **이름 순서대로** 실행
-     (`…0100_order_service.sql` → `…0200_seed_menus.sql` → `…0300_public_board.sql`). 메뉴 시드는 upsert라 다시 실행해도 안전합니다.
+     (`…0100` → `…0200` → `…0300` → `…0400`). 메뉴 시드는 upsert라 다시 실행해도 안전합니다.
 3. **Auth 설정** (Authentication)
    - Sign In / Providers → Email: **Allow new users to sign up 끄기** (공개 회원가입 금지)
    - URL Configuration → Site URL: 배포 URL (예: `https://<도메인>`), Redirect URLs에 로컬 `http://localhost:3000` 추가
 4. **Realtime 확인** (Database → Publications → `supabase_realtime`)
    마이그레이션이 `public_service_state`, `public_order_status`, `orders` 를 추가합니다. 세 테이블이 켜져 있는지 확인하세요.
-   `orders`는 RLS로 직원에게만 전달되고, 손님은 민감 정보가 없는 `public_order_status` 중 **자기 번호만** 구독합니다.
+   마이그레이션 적용 후에는 `orders`(직원용)와 `public_service_state`만 남습니다. 손님 알림은 Broadcast 채널(`order:<회차ID>:<번호>`)로 갑니다.
 5. 직원 계정 발급 → [docs/OPERATIONS.md](docs/OPERATIONS.md#직원-계정)
 6. `.env.local` 작성 (`.env.example` 참고) 후 `npm run dev`
 
@@ -69,7 +69,8 @@ npx wrangler deploy
 
 - **Cloudflare 무료 (Workers 정적 자산)**: 정적 파일 요청 무료·무제한, 상업적 이용 제한 문구 없음. (Vercel Hobby는 ‘개인·비상업적 용도’로 한정돼 음식 판매 부스에는 맞지 않음 → Vercel을 쓰려면 Pro 월 $20)
 - **Supabase 무료**: 동시 연결 200, 초당 메시지 100, 월 메시지 200만, DB 500MB, 1주 비활성 시 일시정지.
-  - 손님은 **내 번호 변경만** 실시간으로 받습니다. 상태 변경 1번에 메시지가 손님 수만큼이 아니라 해당 손님에게 1건만 나가므로 초당 100건 한도에 여유가 있습니다.
+  - 손님은 **내 번호 채널(Broadcast)만** 구독합니다. 상태가 바뀌면 DB가 그 채널에 "바뀌었음" 신호 1건을 보내고, 화면은 서버에서 다시 조회합니다.
+  - Postgres Changes 구독은 구독마다 DB 작업이 생겨 150명 동시 접속 시 일부가 시간 초과됐습니다(실측). Broadcast 로 바꾼 뒤 150명 동시 구독 실패 0건.
   - 목록(수령 가능·최근 수령 완료)은 `public_board` RPC 한 번으로 10~15초마다 갱신합니다.
   - 축제 직전에 `scripts/realtime-load.mjs`로 시험하고, 불안하면 그 달만 Pro(월 $25)로 올립니다.
   - 축제 1주 이상 전에 만들어 두면 일시정지될 수 있으니, 축제 전날 대시보드에서 상태를 확인하세요.
@@ -84,7 +85,7 @@ src/
     customer/           내 주문 카드, 수령 가능/최근 수령 완료, 메뉴
     admin/              주문 등록, 탭 목록, 상세·되돌리기·취소, 회차 시작/종료, 기록
   hooks/
-    usePublicBoard.ts   손님 동기화 (public_board 조회 → 내 번호 구독 → 구독 후 재조회 → revision 병합 → 복귀 시 재조회 → 10~15초 목록 조회)
+    usePublicBoard.ts   손님 동기화 (public_board 조회 → 내 번호 Broadcast 신호 시 재조회 → 복귀 시 재조회 → 10~15초 주기 조회)
     useStaffBoard.ts    직원 동기화
     useOrderMutations.ts 서버 성공 후 반영, 같은 request_id 재시도, 되돌리기
   lib/
@@ -111,6 +112,10 @@ scripts/realtime-load.mjs  동시 연결·반영 지연 측정
 - 멱등성: `order_events.request_id` UNIQUE. 네트워크 실패 후 재시도는 같은 `request_id`를 씁니다.
 - 번호: `UNIQUE(session_id, order_number)`, 범위 1~9999 (`src/lib/domain/constants.ts` 와 마이그레이션을 함께 수정).
 - 열린 회차 1개: `service_sessions` 부분 UNIQUE 인덱스.
+
+### 지원 브라우저
+
+Next.js 16·Tailwind 4 기준 **iOS Safari 16.4+, Android Chrome 111+** (iPhone 8 이후 + iOS 업데이트). 더 오래된 브라우저에서는 앱이 시작되지 않으므로, 옛 문법 스크립트가 기능을 검사해 “업데이트하거나 부스에서 번호를 확인해주세요” 안내를 띄웁니다(`src/components/LegacyBrowserNotice.tsx`). CSP·HSTS·COOP 헤더는 지원하지 않는 브라우저에서는 무시될 뿐 접속을 막지 않습니다.
 
 ### 캐시 전략
 

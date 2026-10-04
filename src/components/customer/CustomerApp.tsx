@@ -44,6 +44,11 @@ function ConnectionLine({
             <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-ink bg-green" />
             실시간 확인 중
           </>
+        ) : connection === "idle" ? (
+          <>
+            <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-ink bg-green" />
+            자동 확인 중
+          </>
         ) : (
           <>
             <span aria-hidden className="h-2.5 w-2.5 rounded-full border border-ink bg-yellow" />

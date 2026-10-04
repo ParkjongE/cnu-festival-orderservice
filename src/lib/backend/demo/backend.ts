@@ -3,7 +3,7 @@
  * (예: 한 탭은 /demo/admin, 다른 탭은 /demo 로 열면 실시간 반영을 확인할 수 있다.)
  * 운영 Supabase 와는 연결되지 않으며, 화면에는 항상 '데모' 배지를 표시한다.
  */
-import { toPublicStatus, pickedUpList, readyList } from "@/lib/domain/board";
+import { pickedUpList, readyList } from "@/lib/domain/board";
 import { seoulDate } from "@/lib/domain/time";
 import type { PublicServiceState, StaffOrder } from "@/lib/domain/types";
 import type { ChannelHealth, PublicBackend, StaffBackend, StaffUser } from "../types";
@@ -199,13 +199,10 @@ export function createDemoPublicBackend(): PublicBackend {
       }),
     listMenus: () => network(() => load().menus.filter((m) => m.active)),
     subscribe(sessionId, myNumber, h) {
+      // 운영과 같게 '내 번호'가 바뀌었다는 신호만 전달하고, 화면은 다시 조회한다
       return subscribeDemo((m) => {
-        if (m.type === "service") h.onServiceState(m.service);
-        if (m.type === "reset") void network(() => load().service).then(h.onServiceState, () => {});
-        // 운영과 같게 '내 번호' 변경만 실시간으로 전달한다
-        if (m.type === "order" && m.order.session_id === sessionId && m.order.order_number === myNumber) {
-          h.onStatus(toPublicStatus(m.order));
-        }
+        if (m.type === "reset") h.onChanged();
+        if (m.type === "order" && m.order.session_id === sessionId && m.order.order_number === myNumber) h.onChanged();
       }, h.onHealth);
     },
   };

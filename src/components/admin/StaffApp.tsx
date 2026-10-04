@@ -22,6 +22,7 @@ import { SessionHistory } from "./SessionHistory";
 function ConnectionPill({ connection, lastSyncedAt }: { connection: ConnectionState; lastSyncedAt: Date | null }) {
   const map: Record<ConnectionState, { label: string; dot: string }> = {
     live: { label: "실시간 연결됨", dot: "bg-green" },
+    idle: { label: "자동 확인 중", dot: "bg-green" },
     connecting: { label: "연결 중…", dot: "bg-yellow" },
     degraded: { label: "연결 확인 중", dot: "bg-red" },
     offline: { label: "오프라인", dot: "bg-red" },

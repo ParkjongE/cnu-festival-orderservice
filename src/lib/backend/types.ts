@@ -13,8 +13,11 @@ import type {
 
 export type BackendKind = "supabase" | "demo";
 
-/** 'live' = 실시간 채널 구독 완료. 그 외에는 화면에 '실시간'이라고 표시하지 않는다. */
-export type ChannelHealth = "live" | "down";
+/**
+ * 'live' = 실시간 채널 구독 완료. 'idle' = 구독할 것이 없음(주기 조회만으로 정상).
+ * 'down' 이거나 아직 모르면 화면에 '실시간'이라고 표시하지 않는다.
+ */
+export type ChannelHealth = "live" | "down" | "idle";
 
 /** 손님 화면 한 번 조회 결과 (public_board RPC). 회차가 열려 있지 않으면 목록은 비어 있다. */
 export interface PublicBoardSnapshot {
@@ -27,8 +30,8 @@ export interface PublicBoardSnapshot {
 }
 
 export interface PublicSubscription {
-  onServiceState(state: PublicServiceState): void;
-  onStatus(row: PublicOrderStatus): void;
+  /** 내 번호의 상태가 바뀌었다는 신호. 내용은 믿지 않고 서버에서 다시 조회한다. */
+  onChanged(): void;
   onHealth(health: ChannelHealth): void;
 }
 
@@ -39,10 +42,10 @@ export interface PublicBackend {
   getBoard(pickedUpLimit: number, myNumber: number | null): Promise<PublicBoardSnapshot>;
   listMenus(): Promise<Menu[]>;
   /**
-   * 회차 변경과 '내 번호'의 상태 변경만 실시간으로 구독한다.
-   * (모든 주문 변경을 모든 손님에게 보내면 메시지가 손님 수만큼 늘어나므로, 목록은 주기 조회로 갱신한다.)
+   * '내 번호' 채널(Broadcast)만 구독한다. 상태가 바뀌면 DB 가 이 채널에 신호를 보낸다.
+   * (목록과 회차 변경은 주기 조회로 갱신해 메시지·구독 부담을 손님 수에 비례하지 않게 한다.)
    */
-  subscribe(sessionId: string | null, myNumber: number | null, handlers: PublicSubscription): () => void;
+  subscribe(sessionId: string, myNumber: number, handlers: PublicSubscription): () => void;
 }
 
 export interface StaffUser {

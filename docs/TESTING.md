@@ -1,10 +1,10 @@
 # 테스트 결과 (2026-10-05 기준)
 
-## 자동 테스트 — `npm test` (30개 통과)
+## 자동 테스트 — `npm test` (31개 통과)
 
 | 파일 | 내용 |
 |---|---|
-| `tests/db/order-service.test.ts` (18) | **실제 마이그레이션 SQL**을 PGlite(Postgres)에서 실행. Supabase 역할(anon/authenticated)과 `auth.uid()`를 흉내 내고 `set local role` 로 각 역할에서 호출 |
+| `tests/db/order-service.test.ts` (19) | **실제 마이그레이션 SQL**을 PGlite(Postgres)에서 실행. Supabase 역할(anon/authenticated)과 `auth.uid()`를 흉내 내고 `set local role` 로 각 역할에서 호출 |
 | `tests/domain.test.ts` | 번호 정규화(`023`→23, 전각 숫자, 범위), 상태 전이 표, 공개 목록 정렬, revision 병합, 직원 탭 정렬, 서울 날짜 |
 | `tests/demo-engine.test.ts` | 데모 엔진이 SQL RPC 와 같은 규칙을 따르는지 |
 
@@ -19,6 +19,7 @@ DB 테스트로 확인한 항목
 - 로그인했지만 명단에 없는 계정·비활성 계정: RPC 거부, 원본 조회 0건
 - 직원도 테이블 직접 UPDATE 불가 (RPC 만)
 - 공개 상태 컬럼에 메뉴·메모·직원·취소 사유 없음
+- 상태 변경마다 `order:<회차>:<번호>` 채널로 신호 전송, 신호 실패가 주문 저장을 막지 않음
 - `public_board`: 익명 호출 가능, 회차·목록·내 번호를 한 번에 반환, 메모 미포함, 종료된 회차는 빈 목록
 
 ## 브라우저 확인 (데모 모드, 데스크톱 Chrome)
@@ -31,13 +32,26 @@ DB 테스트로 확인한 항목
 - 360px 폭(iframe)에서 `/`, `/demo`, `/demo/admin`, `/admin/login` 가로 스크롤 없음
 - `npm run typecheck`, `npm run lint`, `npm run build` 통과
 
+## 운영 환경 부하 시험 (2026-10-05, Supabase 무료·서울, 읽기 전용)
+
+`CLIENTS=150 SECONDS=60 node --env-file=.env.local scripts/public-load.mjs` — 예상 100명 + 여유 50%
+
+| 구조 | 실시간 구독 (150명 동시) | 조회 | 조회 지연 |
+|---|---|---|---|
+| Postgres Changes (회차 + 내 번호 2개 구독) | 첫 시도 67건 시간 초과 → 자동 재시도로 결국 150 연결 | 1,242회 실패 0 | p50 31ms, p95 636ms |
+| Postgres Changes (내 번호 1개 + 0~3초 분산) | 첫 시도 27건 시간 초과 | 889회 실패 0 | p50 34ms, p95 928ms |
+| **Broadcast (현재)** | **150/150, 실패 0** | **888회 실패 0** | p50 30ms, p95 994ms (첫 동시 접속 구간) |
+
+- DB 에서 보낸 Broadcast 신호: 150개 채널 모두 수신(수신 지연 수 ms).
+- 실시간 연결 한도(무료 200)를 넘는 경우에도 주기 조회로 상태는 10~15초 안에 갱신된다.
+
 ## 아직 확인하지 못한 항목
 
-- **실제 Supabase 프로젝트 연동 전체** (연결 정보 없음): Auth 로그인, PostgREST 응답 형태, Realtime `postgres_changes` + RLS 전달, `postgres_changes_options.wait`, 재연결 동작
+- 직원 로그인 → 상태 변경 → 손님 화면 반영의 운영 환경 왕복 시간 (`scripts/realtime-load.mjs`, 직원 비밀번호 필요 — 직접 실행)
 - Supabase 실제 환경에서의 동시성 — PGlite 는 단일 연결이라 ‘동시 요청’ 테스트는 직렬 실행으로 로직만 검증했습니다. 실제 경합은 `FOR UPDATE` 잠금으로 처리되도록 작성했습니다
 - 반영 지연 2초 이내 (아래 시나리오로 측정 필요)
 - iPhone Safari / Android Chrome 실기기: 숫자 키패드, 앱 전환 후 복귀, 잠금 해제 후 재조회
-- 100명 동시 접속 — **검증하지 않았습니다**
+- 손님 150명 동시 접속은 읽기 전용으로 검증(위 표). 직원 상태 변경이 섞인 상태의 동시 접속은 `realtime-load.mjs` 로 확인 필요
 - 스크린리더(VoiceOver/TalkBack)로 상태 변경 안내 낭독
 - QR 인쇄물 스캔
 
