@@ -3,7 +3,7 @@
 2026 용봉대동풀이 음식부스 **청춘 맛 드림**의 주문번호 확인 서비스입니다.
 현장에서 주문·결제 후 받은 종이 번호표의 번호를 입력하면, 직원이 ‘조리 완료’를 누르는 순간 손님 화면이 새로고침 없이 바뀝니다.
 
-- 손님: `/` (공통 QR 고정 URL) — 로그인·전화번호 없음
+- 손님: `/` (공통 QR 고정 URL) — 로그인·전화번호 없음. 번호는 그 기기에 저장돼 다시 접속해도 이어서 보입니다
 - 직원: `/admin` (`/admin/login`) — Supabase Auth + `staff_members` 권한
 - 데모: `/demo`, `/demo/admin` — 항상 ‘데모 · 실제 주문 아님’ 배지, 브라우저 안에서만 동작, 운영 DB와 완전 분리
 
@@ -35,27 +35,41 @@ npm run build
 2. 마이그레이션 적용 — 둘 중 하나
    - CLI: `supabase link --project-ref <ref>` → `supabase db push`
    - 대시보드 SQL Editor에서 `supabase/migrations/` 파일을 **이름 순서대로** 실행
-     (`…0100_order_service.sql` → `…0200_seed_menus.sql`). 메뉴 시드는 upsert라 다시 실행해도 안전합니다.
+     (`…0100_order_service.sql` → `…0200_seed_menus.sql` → `…0300_public_board.sql`). 메뉴 시드는 upsert라 다시 실행해도 안전합니다.
 3. **Auth 설정** (Authentication)
    - Sign In / Providers → Email: **Allow new users to sign up 끄기** (공개 회원가입 금지)
    - URL Configuration → Site URL: 배포 URL (예: `https://<도메인>`), Redirect URLs에 로컬 `http://localhost:3000` 추가
 4. **Realtime 확인** (Database → Publications → `supabase_realtime`)
    마이그레이션이 `public_service_state`, `public_order_status`, `orders` 를 추가합니다. 세 테이블이 켜져 있는지 확인하세요.
-   `orders`는 RLS로 직원에게만 전달되고, 손님은 민감 정보가 없는 `public_order_status`만 구독합니다.
+   `orders`는 RLS로 직원에게만 전달되고, 손님은 민감 정보가 없는 `public_order_status` 중 **자기 번호만** 구독합니다.
 5. 직원 계정 발급 → [docs/OPERATIONS.md](docs/OPERATIONS.md#직원-계정)
 6. `.env.local` 작성 (`.env.example` 참고) 후 `npm run dev`
 
 필요한 키는 **URL + Publishable(anon) 키 두 개뿐**입니다. service_role/secret 키는 쓰지 않습니다.
 
-## Vercel 배포
+## 배포 (Cloudflare Pages)
 
-1. 저장소를 Vercel에 Import (Framework: Next.js, 기본 빌드 설정)
-2. Environment Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Production/Preview)
-   `NEXT_PUBLIC_` 값은 **빌드 시** 번들에 들어가므로 바꾼 뒤에는 재배포해야 합니다.
-3. 배포 URL을 Supabase Site URL에 반영
-4. 확정된 URL로 공통 QR 생성 → 실제 인쇄 크기로 iPhone·Android에서 스캔 확인
+앱은 서버 코드가 없는 정적 사이트입니다 (`npm run build` → `out/`). 데이터는 브라우저가 Supabase와 직접 주고받습니다.
 
-별도 서버 프로세스나 서버리스 함수가 없습니다. 페이지는 정적 셸이고, 데이터는 브라우저가 Supabase와 직접 주고받습니다.
+```bash
+npx wrangler login                                   # 최초 1회
+npm run build                                        # .env.local 의 NEXT_PUBLIC_* 값이 번들에 들어감
+npx wrangler pages deploy out --project-name cnu-festival-orderservice --branch main
+```
+
+- `NEXT_PUBLIC_` 값은 **빌드할 때** 들어가므로, 값을 바꾸면 다시 빌드·배포합니다.
+- 보안·캐시 헤더는 `public/_headers` (Cloudflare 형식)에 있습니다.
+- 배포 URL(`https://cnu-festival-orderservice.pages.dev`)을 Supabase Auth의 Site URL에 반영하세요.
+- 확정된 URL로 공통 QR을 만들고 실제 인쇄 크기로 iPhone·Android에서 스캔해 보세요.
+
+### 비용 판단 (2026-10 공식 가격 페이지 기준, 배포 전 재확인)
+
+- **Cloudflare Pages 무료**: 정적 사이트 무제한 요청, 상업적 이용 제한 문구 없음. (Vercel Hobby는 ‘개인·비상업적 용도’로 한정돼 음식 판매 부스에는 맞지 않음 → Vercel을 쓰려면 Pro 월 $20)
+- **Supabase 무료**: 동시 연결 200, 초당 메시지 100, 월 메시지 200만, DB 500MB, 1주 비활성 시 일시정지.
+  - 손님은 **내 번호 변경만** 실시간으로 받습니다. 상태 변경 1번에 메시지가 손님 수만큼이 아니라 해당 손님에게 1건만 나가므로 초당 100건 한도에 여유가 있습니다.
+  - 목록(수령 가능·최근 수령 완료)은 `public_board` RPC 한 번으로 10~15초마다 갱신합니다.
+  - 축제 직전에 `scripts/realtime-load.mjs`로 시험하고, 불안하면 그 달만 Pro(월 $25)로 올립니다.
+  - 축제 1주 이상 전에 만들어 두면 일시정지될 수 있으니, 축제 전날 대시보드에서 상태를 확인하세요.
 
 ## 구조
 
@@ -67,7 +81,7 @@ src/
     customer/           내 주문 카드, 수령 가능/최근 수령 완료, 메뉴
     admin/              주문 등록, 탭 목록, 상세·되돌리기·취소, 회차 시작/종료, 기록
   hooks/
-    usePublicBoard.ts   손님 동기화 (스냅샷 → 구독 → 구독 후 재조회 → revision 병합 → 복귀 시 재조회 → 보조 조회)
+    usePublicBoard.ts   손님 동기화 (public_board 조회 → 내 번호 구독 → 구독 후 재조회 → revision 병합 → 복귀 시 재조회 → 10~15초 목록 조회)
     useStaffBoard.ts    직원 동기화
     useOrderMutations.ts 서버 성공 후 반영, 같은 request_id 재시도, 되돌리기
   lib/
@@ -98,7 +112,7 @@ scripts/realtime-load.mjs  동시 연결·반영 지연 측정
 ### 캐시 전략
 
 - 주문 데이터는 HTML에 포함되지 않습니다. 브라우저의 Supabase 요청은 `cache: "no-store"`.
-- `/admin*`, `/demo*` 응답은 `Cache-Control: no-store` (`next.config.ts`).
+- `/admin*`, `/demo*` 응답은 `Cache-Control: no-store` (`public/_headers`).
 - 손님 페이지 셸은 정적이어도 무방합니다(데이터 없음).
 
 ## 문서

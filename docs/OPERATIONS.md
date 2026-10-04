@@ -40,10 +40,10 @@ from public.staff_members s join auth.users u on u.id = s.user_id order by s.cre
 
 배포·환경
 
-- [ ] Vercel 환경변수 2개 설정 후 **재배포**, `/`가 ‘운영 연결 준비 중’이 아니라 번호 입력 화면을 보여준다
+- [ ] `.env.local` 값으로 빌드 후 Cloudflare Pages 에 **재배포**, `/`가 ‘운영 연결 준비 중’이 아니라 번호 입력 화면을 보여준다
 - [ ] Supabase Auth: 공개 회원가입 꺼짐, Site URL = 배포 URL
 - [ ] Publications `supabase_realtime`에 `public_service_state`, `public_order_status`, `orders` 포함
-- [ ] service_role/secret 키가 Vercel 변수·저장소·코드 어디에도 없다
+- [ ] service_role/secret 키가 빌드 결과물·저장소·코드 어디에도 없다
 - [ ] 메뉴 4종·가격이 메뉴판과 같다 (`select * from menus order by sort_order;`)
 
 권한 (시크릿 창에서)

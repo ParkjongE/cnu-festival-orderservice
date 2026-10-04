@@ -1,28 +1,16 @@
 import type { NextConfig } from "next";
 
 /**
- * 캐시 전략
- * - 주문 상태는 페이지 HTML 에 들어가지 않는다. 브라우저가 Supabase 에서 직접 조회하며 fetch 는 cache: "no-store".
- * - 페이지 셸(HTML/JS)은 정적이어도 되지만, 직원·데모 화면은 공유 캐시에 남지 않도록 no-store 로 둔다.
+ * Cloudflare Pages(정적 호스팅)에 올리기 위해 정적 파일로 내보낸다 → `out/`.
+ * 서버 코드가 없다: 모든 데이터는 브라우저가 Supabase 와 직접 주고받는다(RLS·RPC 로 보호).
+ *
+ * 캐시·보안 헤더는 정적 내보내기에서 next.config 의 headers() 를 쓸 수 없으므로 public/_headers 에 둔다.
+ * - 주문 상태는 HTML 에 들어가지 않으며, Supabase 요청은 cache: "no-store".
+ * - 직원·데모 화면 HTML 은 no-store.
  */
-const securityHeaders = [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-];
-
 const nextConfig: NextConfig = {
+  output: "export",
   poweredByHeader: false,
-  async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      { source: "/admin/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
-      { source: "/admin", headers: [{ key: "Cache-Control", value: "no-store" }] },
-      { source: "/demo/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
-      { source: "/demo", headers: [{ key: "Cache-Control", value: "no-store" }] },
-    ];
-  },
 };
 
 export default nextConfig;

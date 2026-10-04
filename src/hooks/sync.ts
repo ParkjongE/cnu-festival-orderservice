@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { FALLBACK_POLL_MAX_MS, FALLBACK_POLL_MIN_MS } from "@/lib/domain/constants";
+import { POLL_MAX_MS, POLL_MIN_MS } from "@/lib/domain/constants";
 import type { ChannelHealth } from "@/lib/backend/types";
 
 /** 손님·직원 화면에 보여줄 연결 상태 */
@@ -47,10 +47,10 @@ export function useResume(onResume: () => void) {
 }
 
 /**
- * 실시간 연결이 정상이 아닐 때만, 화면이 보이는 동안 10~15초(무작위) 간격으로 보조 조회한다.
- * 실시간 연결이 복구되면 멈춘다.
+ * active 인 동안, 화면이 보이면 10~15초(무작위) 간격으로 조회한다.
+ * 무작위 간격은 많은 기기가 같은 순간에 몰려 요청하지 않게 하기 위함이다.
  */
-export function useFallbackPolling(active: boolean, poll: () => void) {
+export function usePolling(active: boolean, poll: () => void) {
   const cb = useRef(poll);
   useEffect(() => {
     cb.current = poll;
@@ -59,7 +59,7 @@ export function useFallbackPolling(active: boolean, poll: () => void) {
     if (!active) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = () => {
-      const wait = FALLBACK_POLL_MIN_MS + Math.random() * (FALLBACK_POLL_MAX_MS - FALLBACK_POLL_MIN_MS);
+      const wait = POLL_MIN_MS + Math.random() * (POLL_MAX_MS - POLL_MIN_MS);
       timer = setTimeout(() => {
         if (document.visibilityState === "visible") cb.current();
         schedule();

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Menu, PublicServiceState, ServiceSession, StaffOrder } from "@/lib/domain/types";
 import type { ChannelHealth, StaffBackend } from "@/lib/backend/types";
-import { useConnectionState, useFallbackPolling, useResume } from "./sync";
+import { useConnectionState, usePolling, useResume } from "./sync";
 
 type Orders = Map<string, StaffOrder>;
 
@@ -115,7 +115,7 @@ export function useStaffBoard(backend: StaffBackend, enabled: boolean) {
 
   const health = channel && channel.session === subscribedSession ? channel.health : null;
   const connection = useConnectionState(health);
-  useFallbackPolling(enabled && phase !== "loading" && connection !== "live", () => void refresh());
+  usePolling(enabled && phase !== "loading" && connection !== "live", () => void refresh());
 
   return { session, orders, menus, phase, connection, lastSyncedAt, refresh, applyOrder, setSession };
 }

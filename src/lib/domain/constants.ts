@@ -7,9 +7,13 @@ export const ORDER_NUMBER_MAX = 9999;
 /** 최근 수령 완료 목록 한 번에 보여주는 개수 */
 export const RECENT_PICKED_UP_PAGE = 20;
 
-/** 실시간 연결 실패 시 보조 조회 간격(ms). 매번 이 범위에서 무작위로 고른다. */
-export const FALLBACK_POLL_MIN_MS = 10_000;
-export const FALLBACK_POLL_MAX_MS = 15_000;
+/**
+ * 주기 조회 간격(ms). 매번 이 범위에서 무작위로 고른다.
+ * - 손님: 목록(수령 가능·최근 수령 완료)을 항상 이 주기로 갱신 (내 번호는 실시간)
+ * - 직원: 실시간 연결이 끊겼을 때만 보조 조회
+ */
+export const POLL_MIN_MS = 10_000;
+export const POLL_MAX_MS = 15_000;
 
 /** 상태 변경 직후 '되돌리기'를 띄워두는 시간(ms) */
 export const UNDO_WINDOW_MS = 8_000;

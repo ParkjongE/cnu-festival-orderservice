@@ -170,7 +170,9 @@ describe("상태 전이", () => {
     const req = randomUUID();
     const [x, y] = await Promise.all([move(o, "ready", staff(), req), move(o, "ready", staff(), req)]);
     expect(x.ok && y.ok).toBe(true);
-    const events = await as(db, staff(), `select count(*)::int as n from public.order_events where request_id = $1`, [req]);
+    const events = await as(db, staff(), `select count(*)::int as n from public.order_events where request_id = $1`, [
+      req,
+    ]);
     expect(events[0].n).toBe(1);
     const cur = await as(db, staff(), `select revision from public.orders where id = $1`, [o.id]);
     expect(cur[0].revision).toBe(2);
@@ -188,8 +190,13 @@ describe("권한", () => {
       as(db, anon, `select public.staff_create_order($1, 5, '[]', null, gen_random_uuid())`, [sid]),
     ).rejects.toThrow(/permission denied/);
     await expect(
-      as(db, anon, `insert into public.public_order_status (order_id, session_id, order_number, status, revision)
-                    values (gen_random_uuid(), $1, 1, 'ready', 1)`, [sid]),
+      as(
+        db,
+        anon,
+        `insert into public.public_order_status (order_id, session_id, order_number, status, revision)
+                    values (gen_random_uuid(), $1, 1, 'ready', 1)`,
+        [sid],
+      ),
     ).rejects.toThrow(/permission denied/);
     await expect(as(db, anon, `update public.public_order_status set status = 'ready'`)).rejects.toThrow(
       /permission denied/,
@@ -224,5 +231,55 @@ describe("권한", () => {
     expect(await as(db, anon, `select * from public.public_order_status`)).toEqual([]);
     const state = await as(db, anon, `select session_id, is_open from public.public_service_state`);
     expect(state).toEqual([{ session_id: sid, is_open: false }]);
+  });
+});
+
+describe("public_board (손님 한 번 조회)", () => {
+  type Board = {
+    service: { session_id: string | null; is_open: boolean };
+    ready: Record<string, unknown>[];
+    picked_up: unknown[];
+    mine: Record<string, unknown> | null;
+  };
+  const board = async (limit = 20, mine: number | null = null) =>
+    (await as<{ b: Board }>(db, anon, `select public.public_board($1, $2) as b`, [limit, mine]))[0].b;
+
+  it("익명 사용자가 회차·목록·내 번호를 한 번에 받고, 민감 정보는 없다", async () => {
+    const sid = await openSession();
+    const a = (await createOrder(sid, 23, [{ menu_id: "lasagna", quantity: 1 }], "비밀 메모")).order!;
+    const b = (await createOrder(sid, 24)).order!;
+    await move(b, "ready");
+    const res = await board(20, 23);
+    expect(res.service).toMatchObject({ session_id: sid, is_open: true });
+    expect(res.ready.map((r) => r.order_number)).toEqual([24]);
+    expect(res.mine).toMatchObject({ order_id: a.id, status: "preparing" });
+    expect(Object.keys(res.mine!).sort()).toEqual([
+      "order_id",
+      "order_number",
+      "picked_up_at",
+      "ready_at",
+      "revision",
+      "status",
+    ]);
+    expect(JSON.stringify(res)).not.toContain("비밀 메모");
+    expect((await board(20, 99)).mine).toBeNull();
+  });
+
+  it("최근 수령 완료는 limit+1 개까지(더 보기 판단용), 종료된 회차는 비어 있다", async () => {
+    const sid = await openSession();
+    for (const n of [1, 2, 3]) {
+      const o = (await createOrder(sid, n)).order!;
+      const r = (await move(o, "ready")).order!;
+      await move(r, "picked_up");
+    }
+    expect((await board(2)).picked_up).toHaveLength(3);
+    await rpc(staff(), "staff_close_session", [sid]);
+    const closed = await board(20, 1);
+    expect(closed).toMatchObject({
+      service: { session_id: sid, is_open: false },
+      ready: [],
+      picked_up: [],
+      mine: null,
+    });
   });
 });

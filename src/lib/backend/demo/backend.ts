@@ -184,21 +184,28 @@ function subscribeDemo(onMessage: (m: Message) => void, onHealth: (h: ChannelHea
 export function createDemoPublicBackend(): PublicBackend {
   return {
     kind: "demo",
-    getServiceState: () => network(() => load().service),
-    getSnapshot: (sessionId, limit) =>
+    getBoard: (limit, myNumber) =>
       network(() => {
-        const rows = engine.publicRows(load()).filter((r) => r.session_id === sessionId);
+        const state = load();
+        const rows = engine.publicRows(state);
         const picked = pickedUpList(rows, limit + 1);
-        return { ready: readyList(rows), pickedUp: picked.slice(0, limit), hasMorePickedUp: picked.length > limit };
+        return {
+          service: state.service,
+          ready: readyList(rows),
+          pickedUp: picked.slice(0, limit),
+          hasMorePickedUp: picked.length > limit,
+          mine: myNumber === null ? null : (rows.find((r) => r.order_number === myNumber) ?? null),
+        };
       }),
-    lookup: (sessionId, n) =>
-      network(() => engine.publicRows(load()).find((r) => r.session_id === sessionId && r.order_number === n) ?? null),
     listMenus: () => network(() => load().menus.filter((m) => m.active)),
-    subscribe(sessionId, h) {
+    subscribe(sessionId, myNumber, h) {
       return subscribeDemo((m) => {
         if (m.type === "service") h.onServiceState(m.service);
         if (m.type === "reset") void network(() => load().service).then(h.onServiceState, () => {});
-        if (m.type === "order" && m.order.session_id === sessionId) h.onStatus(toPublicStatus(m.order));
+        // 운영과 같게 '내 번호' 변경만 실시간으로 전달한다
+        if (m.type === "order" && m.order.session_id === sessionId && m.order.order_number === myNumber) {
+          h.onStatus(toPublicStatus(m.order));
+        }
       }, h.onHealth);
     },
   };
