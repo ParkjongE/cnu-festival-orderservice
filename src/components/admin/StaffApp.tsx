@@ -12,6 +12,7 @@ import type { ConnectionState } from "@/hooks/sync";
 import { BrandTitle, CheckerStrip, DemoBadge } from "@/components/brand/Brand";
 import { UndoIcon } from "@/components/ui/icons";
 import { UNDO_WINDOW_MS } from "@/lib/domain/constants";
+import { CancelOrderDialog } from "./CancelOrderDialog";
 import { NewOrderPanel } from "./NewOrderPanel";
 import { OrderDetailDialog } from "./OrderDetailDialog";
 import { OrderList } from "./OrderList";
@@ -71,15 +72,7 @@ function ToastBar({ toast, onDismiss }: { toast: Toast | null; onDismiss: () => 
   );
 }
 
-function StaffHeader({
-  demo,
-  user,
-  right,
-}: {
-  demo: boolean;
-  user: StaffUser | null;
-  right?: React.ReactNode;
-}) {
+function StaffHeader({ demo, user, right }: { demo: boolean; user: StaffUser | null; right?: React.ReactNode }) {
   return (
     <header className="border-b-[3px] border-ink bg-paper">
       <div aria-hidden className="checker h-2.5" />
@@ -98,12 +91,22 @@ function StaffHeader({
   );
 }
 
-function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; demo: boolean; user: StaffUser | null; onSignOut: () => void }) {
+function Console({
+  backend,
+  demo,
+  user,
+  onSignOut,
+}: {
+  backend: StaffBackend;
+  demo: boolean;
+  user: StaffUser | null;
+  onSignOut: () => void;
+}) {
   const board = useStaffBoard(backend, true);
   const [view, setView] = useState<"orders" | "history">("orders");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
-  const [showForm, setShowForm] = useState(true);
+  const [cancelId, setCancelId] = useState<string | null>(null);
   const { refresh, applyOrder } = board;
   const onSessionClosed = useCallback(() => void refresh(), [refresh]);
   const m = useOrderMutations(backend, applyOrder, onSessionClosed);
@@ -119,6 +122,8 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
   }, [board.orders]);
 
   const detail = detailId ? (board.orders.get(detailId) ?? null) : null;
+  // 취소 확인창은 항상 최신 revision 의 주문으로 요청한다
+  const cancelTarget = cancelId ? (board.orders.get(cancelId) ?? null) : null;
   const session = board.session;
 
   const primary = (o: StaffOrder) => {
@@ -167,7 +172,11 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
           <div className="flex items-center gap-3">
             <ConnectionPill connection={board.connection} lastSyncedAt={board.lastSyncedAt} />
             {session && view === "orders" && (
-              <button type="button" onClick={() => setClosing(true)} className="h-10 rounded-lg border-2 border-red px-3 text-sm font-bold text-red">
+              <button
+                type="button"
+                onClick={() => setClosing(true)}
+                className="h-10 rounded-lg border-2 border-red px-3 text-sm font-bold text-red"
+              >
                 회차 종료
               </button>
             )}
@@ -183,7 +192,7 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
         </p>
       )}
 
-      <main className="mx-auto max-w-6xl px-4 pt-4">
+      <main className="mx-auto max-w-6xl px-3 pt-3 sm:px-4 md:pt-4">
         {view === "history" ? (
           <SessionHistory backend={backend} />
         ) : board.phase === "loading" ? (
@@ -191,24 +200,21 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
         ) : board.phase === "error" ? (
           <div className="py-16 text-center">
             <p className="text-lg font-bold text-red">주문 목록을 불러오지 못했어요.</p>
-            <button type="button" onClick={() => void board.refresh()} className="mt-3 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold">
+            <button
+              type="button"
+              onClick={() => void board.refresh()}
+              className="mt-3 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold"
+            >
               다시 시도
             </button>
           </div>
         ) : !session ? (
           <OpenSessionForm backend={backend} onOpened={() => void board.refresh()} />
         ) : (
-          <div className="grid gap-5 md:grid-cols-[22rem_1fr] md:items-start">
-            <div className="md:sticky md:top-4">
-              <button
-                type="button"
-                onClick={() => setShowForm((v) => !v)}
-                aria-expanded={showForm}
-                className="mb-2 h-10 w-full rounded-lg border-2 border-ink bg-paper text-sm font-bold md:hidden"
-              >
-                {showForm ? "주문 등록 접기" : "+ 주문 등록 열기"}
-              </button>
-              <div className={showForm ? "" : "hidden md:block"}>
+          // 휴대폰: 등록 → 목록 한 줄 / 태블릿(768px~): 왼쪽 등록 고정 + 오른쪽 목록
+          <div className="grid gap-4 md:grid-cols-[19rem_1fr] md:items-start lg:grid-cols-[22rem_1fr] lg:gap-5">
+            <div className="md:sticky md:top-3">
+              <div>
                 <NewOrderPanel
                   backend={backend}
                   sessionId={session.id}
@@ -226,6 +232,7 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
               busy={m.busy}
               failures={m.failures}
               onPrimary={primary}
+              onCancel={(o) => setCancelId(o.id)}
               onOpen={(o) => setDetailId(o.id)}
             />
           </div>
@@ -234,7 +241,7 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
 
       {view === "orders" && (
         <OrderDetailDialog
-          key={detailId ?? "none"}
+          key={`detail-${detailId ?? "none"}`}
           order={detail}
           backend={backend}
           readOnly={false}
@@ -242,6 +249,24 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
           failure={detail ? m.failures[detail.id] : undefined}
           onClose={() => setDetailId(null)}
           onTransition={(o, to, reason) => m.transition(o, to, { reason })}
+        />
+      )}
+
+      {view === "orders" && (
+        <CancelOrderDialog
+          key={`cancel-${cancelId ?? "none"}`}
+          order={
+            cancelTarget && (cancelTarget.status === "preparing" || cancelTarget.status === "ready")
+              ? cancelTarget
+              : null
+          }
+          busy={cancelTarget ? Boolean(m.busy[cancelTarget.id]) : false}
+          failure={cancelTarget ? m.failures[cancelTarget.id] : undefined}
+          onClose={() => setCancelId(null)}
+          onConfirm={async (o, reason) => {
+            await m.transition(o, "canceled", { reason });
+            setCancelId(null);
+          }}
         />
       )}
 
@@ -269,7 +294,9 @@ function Console({ backend, demo, user, onSignOut }: { backend: StaffBackend; de
 export function StaffApp({ backend }: { backend: StaffBackend }) {
   const demo = backend.kind === "demo";
   const router = useRouter();
-  const [auth, setAuth] = useState<{ state: "checking" } | { state: "ok"; user: StaffUser } | { state: "denied"; user: StaffUser } | { state: "error" }>({
+  const [auth, setAuth] = useState<
+    { state: "checking" } | { state: "ok"; user: StaffUser } | { state: "denied"; user: StaffUser } | { state: "error" }
+  >({
     state: "checking",
   });
 
@@ -310,7 +337,11 @@ export function StaffApp({ backend }: { backend: StaffBackend }) {
         {auth.state === "error" && (
           <>
             <p className="text-lg font-bold text-red">권한을 확인하지 못했어요. 연결을 확인해주세요.</p>
-            <button type="button" onClick={() => void check()} className="mt-3 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold">
+            <button
+              type="button"
+              onClick={() => void check()}
+              className="mt-3 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold"
+            >
               다시 시도
             </button>
           </>
@@ -319,7 +350,11 @@ export function StaffApp({ backend }: { backend: StaffBackend }) {
           <>
             <p className="text-lg font-bold text-red">직원 권한이 없는 계정이에요.</p>
             <p className="mt-1 text-muted">{auth.user.email} — 관리자에게 직원 등록을 요청해주세요.</p>
-            <button type="button" onClick={() => void signOut()} className="mt-4 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold">
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="mt-4 h-12 rounded-xl border-2 border-ink bg-paper px-5 font-bold"
+            >
               다른 계정으로 로그인
             </button>
           </>

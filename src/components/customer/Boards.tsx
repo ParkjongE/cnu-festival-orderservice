@@ -29,7 +29,7 @@ export function ReadyBoard({ rows, myNumber }: { rows: PublicOrderStatus[]; myNu
       </div>
       {rows.length === 0 ? (
         <p className="mt-3 rounded-xl border-2 border-dashed border-line bg-paper/60 px-4 py-5 text-center text-base text-muted">
-          준비가 끝난 주문이 여기 표시돼요.
+          조리가 끝난 주문이 여기 표시돼요.
         </p>
       ) : (
         <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-2.5" aria-label="수령 가능한 번호">

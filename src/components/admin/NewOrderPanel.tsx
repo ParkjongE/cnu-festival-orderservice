@@ -30,6 +30,8 @@ export function NewOrderPanel({
   const [saving, setSaving] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  // 휴대폰에서는 메뉴·메모 입력을 접어 두고, 태블릿(md 이상)에서는 항상 펼친다
+  const [showMore, setShowMore] = useState(false);
   // 같은 입력으로 다시 보내는 재시도는 같은 request_id 를 써서 중복 등록을 막는다
   const requestId = useRef<string | null>(null);
   const numberRef = useRef<HTMLInputElement>(null);
@@ -82,6 +84,7 @@ export function NewOrderPanel({
       setNumber("");
       setQty({});
       setNote("");
+      setShowMore(false);
       setDone(`${res.order.order_number}번 등록 완료`);
       numberRef.current?.focus();
       return;
@@ -107,7 +110,7 @@ export function NewOrderPanel({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border-[3px] border-ink bg-paper p-4 shadow-hard" noValidate>
+    <form onSubmit={submit} className="rounded-2xl border-[3px] border-ink bg-paper p-3 shadow-hard sm:p-4" noValidate>
       <h2 className="font-display text-xl text-green">주문 등록</h2>
       <div className="mt-3 flex gap-2">
         <label htmlFor={numberId} className="sr-only">
@@ -139,7 +142,10 @@ export function NewOrderPanel({
       </div>
 
       {problem && (
-        <div role="alert" className="mt-2 rounded-lg border-2 border-red bg-red/10 px-3 py-2 text-sm font-bold text-red">
+        <div
+          role="alert"
+          className="mt-2 rounded-lg border-2 border-red bg-red/10 px-3 py-2 text-sm font-bold text-red"
+        >
           {problem.message}
           {problem.existing && (
             <button
@@ -158,49 +164,80 @@ export function NewOrderPanel({
         </p>
       )}
 
-      <fieldset className="mt-3">
-        <legend className="text-sm font-bold text-muted">메뉴·수량 (선택)</legend>
-        <ul className="mt-1.5 grid gap-1.5">
-          {menus.map((m) => {
-            const q = qty[m.id] ?? 0;
-            return (
-              <li key={m.id} className={`flex items-center gap-2 rounded-lg border-2 px-2 py-1 ${q > 0 ? "border-ink bg-yellow/40" : "border-line"}`}>
-                <span className="min-w-0 flex-1 text-[0.95rem] font-bold leading-tight">
-                  {m.name}
-                  <span className="block text-xs font-medium text-muted">{formatWon(m.price_krw)}</span>
-                </span>
-                <button type="button" onClick={() => step(m.id, -1)} disabled={q === 0} aria-label={`${m.name} 빼기`} className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-ink bg-paper disabled:opacity-30">
-                  <MinusIcon className="h-5 w-5" />
-                </button>
-                <span className="num w-7 text-center text-xl" aria-live="polite">{q}</span>
-                <button type="button" onClick={() => step(m.id, 1)} aria-label={`${m.name} 추가`} className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-ink bg-paper">
-                  <PlusIcon className="h-5 w-5" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </fieldset>
+      <button
+        type="button"
+        onClick={() => setShowMore((v) => !v)}
+        aria-expanded={showMore}
+        className="mt-3 flex h-11 w-full items-center justify-between rounded-lg border-2 border-line px-3 text-sm font-bold text-muted md:hidden"
+      >
+        <span>
+          메뉴·메모 {showMore ? "접기" : "추가 (선택)"}
+          {!showMore && (Object.values(qty).some((q) => q > 0) || note) ? " · 입력됨" : ""}
+        </span>
+        <span aria-hidden>{showMore ? "−" : "+"}</span>
+      </button>
 
-      <label className="mt-3 block">
-        <span className="text-sm font-bold text-muted">직원 메모 (선택)</span>
-        <input
-          value={note}
-          onChange={(e) => {
-            touched();
-            setNote(e.target.value.slice(0, NOTE_MAX_LENGTH));
-          }}
-          className="mt-1 h-11 w-full rounded-lg border-2 border-ink bg-white px-3"
-          placeholder="예: 소스 따로"
-        />
-      </label>
+      <div className={showMore ? "" : "hidden md:block"}>
+        <fieldset className="mt-3">
+          <legend className="text-sm font-bold text-muted">메뉴·수량 (선택)</legend>
+          <ul className="mt-1.5 grid gap-1.5">
+            {menus.map((m) => {
+              const q = qty[m.id] ?? 0;
+              return (
+                <li
+                  key={m.id}
+                  className={`flex items-center gap-2 rounded-lg border-2 px-2 py-1 ${q > 0 ? "border-ink bg-yellow/40" : "border-line"}`}
+                >
+                  <span className="min-w-0 flex-1 text-[0.95rem] font-bold leading-tight">
+                    {m.name}
+                    <span className="block text-xs font-medium text-muted">{formatWon(m.price_krw)}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => step(m.id, -1)}
+                    disabled={q === 0}
+                    aria-label={`${m.name} 빼기`}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-ink bg-paper disabled:opacity-30"
+                  >
+                    <MinusIcon className="h-5 w-5" />
+                  </button>
+                  <span className="num w-7 text-center text-xl" aria-live="polite">
+                    {q}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => step(m.id, 1)}
+                    aria-label={`${m.name} 추가`}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border-2 border-ink bg-paper"
+                  >
+                    <PlusIcon className="h-5 w-5" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
 
-      {total > 0 && (
-        <p className="mt-2 flex justify-between text-sm">
-          <span className="text-muted">참고 금액 (결제 확인용 아님)</span>
-          <span className="font-black">{formatWon(total)}</span>
-        </p>
-      )}
+        <label className="mt-3 block">
+          <span className="text-sm font-bold text-muted">직원 메모 (선택)</span>
+          <input
+            value={note}
+            onChange={(e) => {
+              touched();
+              setNote(e.target.value.slice(0, NOTE_MAX_LENGTH));
+            }}
+            className="mt-1 h-11 w-full rounded-lg border-2 border-ink bg-white px-3"
+            placeholder="예: 소스 따로"
+          />
+        </label>
+
+        {total > 0 && (
+          <p className="mt-2 flex justify-between text-sm">
+            <span className="text-muted">참고 금액 (결제 확인용 아님)</span>
+            <span className="font-black">{formatWon(total)}</span>
+          </p>
+        )}
+      </div>
     </form>
   );
 }

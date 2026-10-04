@@ -34,6 +34,7 @@ export function OrderList({
   busy,
   failures,
   onPrimary,
+  onCancel,
   onOpen,
 }: {
   orders: Map<string, StaffOrder>;
@@ -41,6 +42,7 @@ export function OrderList({
   busy?: Record<string, boolean>;
   failures?: Record<string, Failure>;
   onPrimary?: (o: StaffOrder) => void;
+  onCancel?: (o: StaffOrder) => void;
   onOpen: (o: StaffOrder) => void;
 }) {
   const [tab, setTab] = useState<StaffTab>("preparing");
@@ -67,53 +69,68 @@ export function OrderList({
 
   return (
     <section>
-      <div role="tablist" aria-label="주문 상태" className="grid grid-cols-4 gap-1 rounded-xl border-[3px] border-ink bg-ink p-1">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={`flex min-h-14 flex-col items-center justify-center rounded-lg px-1 text-sm font-bold leading-tight ${
-              tab === t ? "bg-yellow text-ink" : "bg-transparent text-paper"
-            }`}
-          >
-            {STATUS_LABEL[t]}
-            <span className="num text-xl">{counts[t]}</span>
-          </button>
-        ))}
-      </div>
+      {/* 탭·검색은 스크롤해도 위에 고정한다 */}
+      <div className="sticky top-0 z-20 -mx-1 bg-cream px-1 pb-2 pt-2">
+        <div
+          role="tablist"
+          aria-label="주문 상태"
+          className="grid grid-cols-4 gap-1 rounded-xl border-[3px] border-ink bg-ink p-1"
+        >
+          {TABS.map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={`flex min-h-14 flex-col items-center justify-center rounded-lg px-1 text-sm font-bold leading-tight ${
+                tab === t ? "bg-yellow text-ink" : "bg-transparent text-paper"
+              }`}
+            >
+              {STATUS_LABEL[t]}
+              <span className="num text-xl">{counts[t]}</span>
+            </button>
+          ))}
+        </div>
 
-      <label className="relative mt-3 block">
-        <span className="sr-only">번호 검색</span>
-        <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(sanitizeOrderNumberInput(e.target.value))}
-          inputMode="numeric"
-          pattern="[0-9]*"
-          placeholder="번호 검색"
-          className="h-12 w-full rounded-xl border-2 border-ink bg-paper pl-10 pr-10 text-base"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={() => setQuery("")}
-            aria-label="검색 지우기"
-            className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 text-lg font-bold text-muted"
-          >
-            ✕
-          </button>
-        )}
-      </label>
+        <label className="relative mt-2 block">
+          <span className="sr-only">번호 검색</span>
+          <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(sanitizeOrderNumberInput(e.target.value))}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            placeholder="번호 검색"
+            className="h-12 w-full rounded-xl border-2 border-ink bg-paper pl-10 pr-10 text-base"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="검색 지우기"
+              className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2 text-lg font-bold text-muted"
+            >
+              ✕
+            </button>
+          )}
+        </label>
+      </div>
 
       {exactElsewhere && (
         <p className="mt-2 text-sm">
           {exactElsewhere.order_number}번은 ‘{STATUS_LABEL[exactElsewhere.status]}’에 있어요.{" "}
-          <button type="button" className="font-bold underline underline-offset-2" onClick={() => setTab(exactElsewhere.status)}>
+          <button
+            type="button"
+            className="font-bold underline underline-offset-2"
+            onClick={() => setTab(exactElsewhere.status)}
+          >
             이동
           </button>{" "}
-          <button type="button" className="font-bold underline underline-offset-2" onClick={() => onOpen(exactElsewhere)}>
+          <button
+            type="button"
+            className="font-bold underline underline-offset-2"
+            onClick={() => onOpen(exactElsewhere)}
+          >
             상세 보기
           </button>
         </p>
@@ -122,7 +139,7 @@ export function OrderList({
       {list.length === 0 ? (
         <p className="mt-6 text-center text-base text-muted">{query ? "검색 결과가 없어요." : EMPTY[tab]}</p>
       ) : (
-        <ul className="mt-3 grid gap-2.5 xl:grid-cols-2">
+        <ul className="mt-1 grid gap-2.5 xl:grid-cols-2">
           {list.map((o) => (
             <OrderCard
               key={o.id}
@@ -132,6 +149,7 @@ export function OrderList({
               busy={Boolean(busy?.[o.id])}
               failure={failures?.[o.id]}
               onPrimary={() => onPrimary?.(o)}
+              onCancel={onCancel ? () => onCancel(o) : undefined}
               onOpen={() => onOpen(o)}
             />
           ))}

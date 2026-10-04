@@ -68,11 +68,11 @@ export function OrderDetailDialog({
     }
     if (order.status === "ready") {
       actions.push({ to: "picked_up", label: "수령 완료", title: "", body: "", tone: "red", primary: true, direct: true });
-      actions.push({ to: "preparing", label: "준비 중으로 되돌리기", title: `${n}번을 준비 중으로 되돌릴까요?`, body: "손님 화면의 '수령 가능' 목록에서 빠지고 다시 '준비 중'으로 보여요.", tone: "green" });
+      actions.push({ to: "preparing", label: "준비 중으로 되돌리기", title: `${n}번을 준비 중으로 되돌릴까요?`, body: "손님 화면의 '지금 받아가세요' 목록에서 빠지고 다시 '준비 중'으로 보여요.", tone: "green" });
       actions.push({ to: "canceled", label: "주문 취소", title: `${n}번 주문을 취소할까요?`, body: "손님 화면에 '취소된 주문이에요'로 표시돼요. 이후 '취소 복원'으로 되돌릴 수 있어요.", tone: "red", reason: true });
     }
     if (order.status === "picked_up") {
-      actions.push({ to: "ready", label: "수령 대기로 되돌리기", title: `${n}번을 수령 대기로 되돌릴까요?`, body: "손님 화면에서 다시 '준비됐어요!'로 보여요. 실제로 전달하지 않은 경우에만 사용하세요.", tone: "green" });
+      actions.push({ to: "ready", label: "수령 대기로 되돌리기", title: `${n}번을 수령 대기로 되돌릴까요?`, body: "손님 화면에서 다시 '조리 완료'로 보여요. 실제로 전달하지 않은 경우에만 사용하세요.", tone: "green" });
     }
     if (order.status === "canceled" && order.canceled_from) {
       const back = order.canceled_from;

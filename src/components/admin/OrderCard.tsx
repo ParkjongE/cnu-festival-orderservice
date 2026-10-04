@@ -15,6 +15,7 @@ export function OrderCard({
   failure,
   readOnly,
   onPrimary,
+  onCancel,
   onOpen,
 }: {
   order: StaffOrder;
@@ -23,12 +24,14 @@ export function OrderCard({
   failure?: Failure;
   readOnly?: boolean;
   onPrimary: () => void;
+  onCancel?: () => void;
   onOpen: () => void;
 }) {
   const since = minutesSince(order.created_at, now);
   const readyFor = minutesSince(order.ready_at, now);
-  const primary =
-    readOnly ? null : order.status === "preparing"
+  const primary = readOnly
+    ? null
+    : order.status === "preparing"
       ? { label: "조리 완료", cls: "bg-green text-paper" }
       : order.status === "ready"
         ? { label: "수령 완료", cls: "bg-red text-paper" }
@@ -63,20 +66,35 @@ export function OrderCard({
               <span className="mt-0.5 block text-sm text-muted">메뉴 미입력</span>
             )}
             {order.staff_note && (
-              <span className="mt-1 block truncate rounded bg-yellow/60 px-1.5 text-sm text-ink">메모: {order.staff_note}</span>
+              <span className="mt-1 block truncate rounded bg-yellow/60 px-1.5 text-sm text-ink">
+                메모: {order.staff_note}
+              </span>
             )}
           </span>
         </button>
         {primary && (
-          <button
-            type="button"
-            onClick={onPrimary}
-            disabled={busy}
-            aria-busy={busy}
-            className={`min-h-14 w-[6.5rem] shrink-0 self-center rounded-xl border-[3px] border-ink px-2 text-base font-black shadow-hard-sm transition active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 ${primary.cls}`}
-          >
-            {busy ? "저장 중…" : primary.label}
-          </button>
+          <div className="flex w-[6.75rem] shrink-0 flex-col gap-1.5 self-center sm:w-[7.5rem]">
+            <button
+              type="button"
+              onClick={onPrimary}
+              disabled={busy}
+              aria-busy={busy}
+              className={`min-h-14 rounded-xl border-[3px] border-ink px-2 text-base font-black shadow-hard-sm transition active:translate-x-0.5 active:translate-y-0.5 active:shadow-none disabled:opacity-60 ${primary.cls}`}
+            >
+              {busy ? "저장 중…" : primary.label}
+            </button>
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                aria-label={`${order.order_number}번 주문 취소`}
+                className="h-11 rounded-lg border-2 border-red bg-paper text-sm font-bold text-red disabled:opacity-60"
+              >
+                취소
+              </button>
+            )}
+          </div>
         )}
       </div>
       {failure && (

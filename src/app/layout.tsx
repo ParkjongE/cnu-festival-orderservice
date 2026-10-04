@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Black_Han_Sans, Noto_Sans_KR } from "next/font/google";
-import { BRAND_NAME, BRAND_SLOGAN, EVENT_NAME } from "@/lib/domain/constants";
+import { BRAND_NAME, EVENT_NAME } from "@/lib/domain/constants";
 import "./globals.css";
 
 // 두 글꼴 모두 SIL Open Font License (Google Fonts) — 상업적 사용·웹 임베딩 가능
@@ -22,7 +22,7 @@ const sans = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: `${BRAND_NAME} · 주문 확인`,
-  description: `${EVENT_NAME} ${BRAND_NAME} — ${BRAND_SLOGAN}. 주문번호로 준비 상태를 확인하세요.`,
+  description: `${EVENT_NAME} ${BRAND_NAME} — 주문번호로 조리 현황을 실시간으로 확인하세요.`,
   robots: { index: false, follow: false },
 };
 

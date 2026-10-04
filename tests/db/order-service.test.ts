@@ -118,7 +118,7 @@ describe("주문 등록", () => {
 });
 
 describe("상태 전이", () => {
-  it("준비 중 → 수령 가능 → 수령 완료, 각 단계가 공개 상태와 이력에 남는다", async () => {
+  it("준비 중 → 수령 대기 → 수령 완료, 각 단계가 공개 상태와 이력에 남는다", async () => {
     const sid = await openSession();
     const o = (await createOrder(sid, 23)).order!;
     const ready = (await move(o, "ready")).order!;

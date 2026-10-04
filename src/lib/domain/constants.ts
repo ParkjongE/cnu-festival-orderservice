@@ -20,7 +20,6 @@ export const MAX_ITEM_QUANTITY = 99;
 export const SERVICE_TIME_ZONE = "Asia/Seoul";
 
 export const BRAND_NAME = "청춘 맛 드림";
-export const BRAND_SLOGAN = "청춘들의 맛을 드립니다";
 export const EVENT_NAME = "2026 용봉대동풀이";
 
 /**

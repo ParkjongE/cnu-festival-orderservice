@@ -1,4 +1,4 @@
-import { BRAND_SLOGAN, EVENT_NAME } from "@/lib/domain/constants";
+import { EVENT_NAME } from "@/lib/domain/constants";
 import { SmallStar, StarBurst } from "@/components/ui/icons";
 
 export function CheckerStrip({ className = "" }: { className?: string }) {
@@ -48,11 +48,12 @@ export function EventLine() {
   );
 }
 
-export function SloganRibbon() {
+/** 빨강 리본 장식 (문구: 실시간 주문 현황) */
+export function HeaderRibbon() {
   return (
     <p className="ribbon mx-auto inline-flex items-center gap-2 bg-red px-7 py-1.5 text-[0.95rem] font-bold text-paper">
       <SmallStar className="h-3.5 w-3.5 text-yellow" />
-      {BRAND_SLOGAN}
+      실시간 주문 현황
       <SmallStar className="h-3.5 w-3.5 text-yellow" />
     </p>
   );
@@ -73,7 +74,7 @@ export function CustomerHeader() {
           <Rays flip />
         </h1>
         <div className="mt-2">
-          <SloganRibbon />
+          <HeaderRibbon />
         </div>
       </div>
     </header>
