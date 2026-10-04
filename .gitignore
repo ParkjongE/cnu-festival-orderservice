@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase CLI 로컬 상태
+supabase/.temp/
+supabase/.branches/
