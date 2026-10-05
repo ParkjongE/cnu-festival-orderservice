@@ -82,7 +82,7 @@ src/
   app/                  라우트: /, /admin, /admin/login, /demo, /demo/admin
   components/
     brand/              체커보드·타이틀·리본 (홍보물 디자인 언어)
-    customer/           내 주문 카드, 수령 가능/최근 수령 완료, 메뉴
+    customer/           내 주문 카드, 지금 받아가세요/준비 중 목록, 메뉴
     admin/              주문 등록, 탭 목록, 상세·되돌리기·취소, 회차 시작/종료, 기록
   hooks/
     usePublicBoard.ts   손님 동기화 (public_board 조회 → 내 번호 Broadcast 신호 시 재조회 → 복귀 시 재조회 → 10~15초 주기 조회)
