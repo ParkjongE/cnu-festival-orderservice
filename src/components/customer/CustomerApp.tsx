@@ -10,7 +10,7 @@ import { useStoredSelection } from "@/hooks/useStoredSelection";
 import type { ConnectionState } from "@/hooks/sync";
 import { CheckerStrip, CustomerHeader, DemoBadge } from "@/components/brand/Brand";
 import { InfoIcon, SignalOffIcon } from "@/components/ui/icons";
-import { MenuSection, PickedUpBoard, ReadyBoard } from "./Boards";
+import { MenuSection, PreparingBoard, ReadyBoard } from "./Boards";
 import { ErrorCard, LoadingCard, NumberForm, RestingCard, StatusCard } from "./MyOrderCard";
 
 function ConnectionLine({
@@ -104,7 +104,7 @@ export function CustomerApp({ backend, demoControls }: { backend: PublicBackend;
         notice={
           sessionMismatch ? (
             <p className="mt-3 rounded-lg border-2 border-ink bg-yellow px-3 py-2 text-[0.95rem] font-bold text-ink">
-              새 운영 회차가 시작됐어요. 이번에 받은 번호표의 번호를 다시 입력해주세요.
+              새 운영 회차가 시작됐어요. 이번 주문번호를 다시 입력해주세요.
             </p>
           ) : null
         }
@@ -137,7 +137,7 @@ export function CustomerApp({ backend, demoControls }: { backend: PublicBackend;
         {openSessionId && board.phase === "ready" && (
           <>
             <ReadyBoard rows={board.ready} myNumber={activeNumber} />
-            <PickedUpBoard rows={board.pickedUp} hasMore={board.hasMorePicked} onMore={board.loadMorePicked} />
+            <PreparingBoard rows={board.preparing} myNumber={activeNumber} />
           </>
         )}
 
@@ -145,7 +145,7 @@ export function CustomerApp({ backend, demoControls }: { backend: PublicBackend;
 
         <footer className="mt-8 space-y-1 px-1 text-sm text-muted">
           <p>· 주문과 결제는 부스에서 해주세요. 이 페이지는 준비 상태만 알려드려요.</p>
-          <p>· 번호표는 음식을 받을 때까지 보관해주세요.</p>
+          <p>· 주문할 때 안내받은 주문번호를 기억해주세요.</p>
           <p>· 번호 순서와 준비 순서는 다를 수 있어요.</p>
         </footer>
       </main>

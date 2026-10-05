@@ -4,12 +4,13 @@ import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { orderNumberErrorMessage, parseOrderNumber, sanitizeOrderNumberInput } from "@/lib/domain/order-number";
 import type { OrderStatus, PublicOrderStatus } from "@/lib/domain/types";
 import type { LookupState } from "@/hooks/usePublicBoard";
+import { CookingDots } from "@/components/ui/CookingDots";
 import { BellIcon, CheckIcon, MoonIcon, PotIcon, QuestionIcon, SmallStar, XIcon } from "@/components/ui/icons";
 
 /** 기획서의 상태별 실제 문구 */
 const STATUS_COPY: Record<OrderStatus, { title: (n: number) => string; body: string }> = {
   preparing: { title: (n) => `${n}번, 맛있게 준비 중이에요`, body: "조리가 끝나면 이 화면이 바로 ‘조리 완료’로 바뀌어요." },
-  ready: { title: (n) => `${n}번, 조리 완료!`, body: "부스에 번호표를 보여주고 받아가세요." },
+  ready: { title: (n) => `${n}번, 조리 완료!`, body: "부스에서 주문번호를 말씀해주시고 받아가세요." },
   picked_up: { title: (n) => `${n}번, 수령 완료!`, body: "맛있게 드세요! 즐거운 축제 되세요!" },
   canceled: { title: () => "취소된 주문이에요", body: "확인이 필요하면 부스 직원에게 문의해주세요." },
 };
@@ -20,17 +21,6 @@ const BADGE: Record<OrderStatus, { label: string; icon: ReactNode; cls: string }
   picked_up: { label: "수령 완료", icon: <CheckIcon className="h-5 w-5" />, cls: "bg-paper text-ink" },
   canceled: { label: "취소됨", icon: <XIcon className="h-5 w-5" />, cls: "bg-paper text-red" },
 };
-
-/** '준비 중…' 의 점 세 개가 차례로 깜빡인다 (모션 감소 설정 시 정지) */
-function CookingDots() {
-  return (
-    <span aria-hidden className="cooking-dots -ml-1 inline-flex">
-      <span>.</span>
-      <span>.</span>
-      <span>.</span>
-    </span>
-  );
-}
 
 function Card({ tone = "paper", children, animate }: { tone?: "paper" | "green"; children: ReactNode; animate?: boolean }) {
   const toneCls = tone === "green" ? "bg-green text-paper" : "bg-paper text-ink";
@@ -80,7 +70,7 @@ export function NumberForm({
   return (
     <Card>
       <Headline>내 주문, 어디까지 왔을까?</Headline>
-      <p className="mt-1 text-base text-muted">번호표에 적힌 주문번호를 입력해주세요.</p>
+      <p className="mt-1 text-base text-muted">주문번호를 입력해주세요!</p>
       {notice}
       <form onSubmit={submit} className="mt-4 flex flex-col gap-3" noValidate>
         <label htmlFor={inputId} className="sr-only">

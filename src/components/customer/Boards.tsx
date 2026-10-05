@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { formatShortTime, formatWon } from "@/lib/domain/time";
+import { formatWon } from "@/lib/domain/time";
 import type { Menu, PublicOrderStatus } from "@/lib/domain/types";
 import { ChevronIcon, SmallStar } from "@/components/ui/icons";
+import { CookingDots } from "@/components/ui/CookingDots";
 
 function SectionTitle({ children, tone }: { children: React.ReactNode; tone: "yellow" | "plain" }) {
   if (tone === "yellow") {
@@ -56,48 +57,41 @@ export function ReadyBoard({ rows, myNumber }: { rows: PublicOrderStatus[]; myNu
   );
 }
 
-export function PickedUpBoard({
-  rows,
-  hasMore,
-  onMore,
-}: {
-  rows: PublicOrderStatus[];
-  hasMore: boolean;
-  onMore: () => void;
-}) {
+/** 주문이 들어와 준비 중인 번호. 손님이 부스가 얼마나 바쁜지 알 수 있게 보여준다. */
+export function PreparingBoard({ rows, myNumber }: { rows: PublicOrderStatus[]; myNumber: number | null }) {
   return (
-    <section aria-labelledby="picked-title" className="mt-8">
+    <section aria-labelledby="preparing-title" className="mt-8">
       <div className="flex items-end justify-between gap-2">
-        <span id="picked-title">
-          <SectionTitle tone="plain">최근 수령 완료</SectionTitle>
-        </span>
-        <span className="text-sm text-muted">최근 순</span>
+        <h2 id="preparing-title" className="font-display text-[1.45rem] leading-none text-ink">
+          준비 중<CookingDots />
+        </h2>
+        <span className="text-sm font-bold text-muted">{rows.length}건</span>
       </div>
+      <p className="mt-1.5 text-sm text-muted">주문이 들어와 만들고 있는 번호예요. 번호 순서대로 나오지 않을 수 있어요.</p>
       {rows.length === 0 ? (
-        <p className="mt-3 text-base text-muted">아직 수령 완료된 주문이 없어요.</p>
+        <p className="mt-3 rounded-xl border-2 border-dashed border-line bg-paper/60 px-4 py-4 text-center text-base text-muted">
+          지금 준비 중인 주문이 없어요.
+        </p>
       ) : (
-        <>
-          <ul className="mt-3 flex flex-wrap gap-2" aria-label="최근 수령 완료 번호">
-            {rows.map((r) => (
+        <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-2" aria-label="준비 중인 번호">
+          {rows.map((r) => {
+            const mine = r.order_number === myNumber;
+            return (
               <li
                 key={r.order_id}
-                className="inline-flex items-baseline gap-1 rounded-lg border-2 border-line bg-paper/70 px-2.5 py-1 text-muted"
+                className={`flex flex-col items-center justify-center rounded-lg border-2 border-ink px-1 py-1.5 ${
+                  mine ? "bg-ink text-yellow" : "bg-yellow/40 text-ink"
+                }`}
               >
-                <span className="num text-xl text-ink/75">{r.order_number}</span>
-                <span className="text-xs">{formatShortTime(r.picked_up_at)}</span>
+                <span className="num text-[1.5rem] leading-none">
+                  {r.order_number}
+                  <span className="ml-0.5 font-display text-sm">번</span>
+                </span>
+                {mine && <span className="mt-0.5 text-[0.7rem] font-black">내 번호</span>}
               </li>
-            ))}
-          </ul>
-          {hasMore && (
-            <button
-              type="button"
-              onClick={onMore}
-              className="mt-3 h-11 rounded-lg border-2 border-ink px-4 text-sm font-bold text-ink"
-            >
-              더 보기
-            </button>
-          )}
-        </>
+            );
+          })}
+        </ul>
       )}
     </section>
   );

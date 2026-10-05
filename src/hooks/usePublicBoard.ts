@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { pickedUpList, readyList } from "@/lib/domain/board";
-import { RECENT_PICKED_UP_PAGE } from "@/lib/domain/constants";
+import { preparingList, readyList } from "@/lib/domain/board";
 import type { PublicOrderStatus, PublicServiceState } from "@/lib/domain/types";
 import type { ChannelHealth, PublicBackend } from "@/lib/backend/types";
 import { useConnectionState, usePolling, useResume } from "./sync";
@@ -27,26 +26,23 @@ export function usePublicBoard(backend: PublicBackend, myNumber: number | null) 
   const [phase, setPhase] = useState<"loading" | "ready" | "error">("loading");
   const [channel, setChannel] = useState<{ key: string; health: ChannelHealth } | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
-  const [pickedLimit, setPickedLimit] = useState(RECENT_PICKED_UP_PAGE);
-  const [hasMorePicked, setHasMorePicked] = useState(false);
   const [rows, setRows] = useState<Rows>(() => new Map());
   const [lookup, setLookup] = useState<{ number: number; state: "loading" | "not_found" | "error" } | null>(null);
 
   const fetchSeq = useRef(0);
 
   const refresh = useCallback(
-    async (number: number | null, pickedUpLimit: number) => {
+    async (number: number | null) => {
       const seq = ++fetchSeq.current;
       try {
         // 회차·목록·내 번호를 요청 한 번으로 가져온다
-        const board = await backend.getBoard(pickedUpLimit, number);
+        const board = await backend.getBoard(number);
         if (seq !== fetchSeq.current) return;
         const sessionId = board.service.is_open ? board.service.session_id : null;
         const next: Rows = new Map();
-        for (const r of [...board.ready, ...board.pickedUp]) next.set(r.order_id, r);
+        for (const r of [...board.ready, ...board.preparing]) next.set(r.order_id, r);
         if (board.mine) next.set(board.mine.order_id, board.mine);
         setService(board.service);
-        setHasMorePicked(board.hasMorePickedUp);
         setRows(next);
         setLookup(number !== null && sessionId && !board.mine ? { number, state: "not_found" } : null);
         setLastSyncedAt(new Date());
@@ -62,20 +58,17 @@ export function usePublicBoard(backend: PublicBackend, myNumber: number | null) 
   );
 
   // 최신 값을 콜백에서 쓰기 위한 참조
-  const latest = useRef({ myNumber, pickedLimit });
+  const latest = useRef(myNumber);
   useEffect(() => {
-    latest.current = { myNumber, pickedLimit };
+    latest.current = myNumber;
   });
-  const refreshLatest = useCallback(
-    () => void refresh(latest.current.myNumber, latest.current.pickedLimit),
-    [refresh],
-  );
+  const refreshLatest = useCallback(() => void refresh(latest.current), [refresh]);
 
-  // 최초 조회 / 번호 변경 / 더 보기
+  // 최초 조회 / 번호 변경
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 서버(외부 시스템) 조회 결과를 비동기로 반영한다
-    void refresh(myNumber, pickedLimit);
-  }, [refresh, myNumber, pickedLimit]);
+    void refresh(myNumber);
+  }, [refresh, myNumber]);
 
   // '내 번호' 신호 구독. 회차나 번호가 바뀌면 다시 구독한다.
   // (다른 번호들의 변화와 회차 변경은 아래 주기 조회로 반영한다)
@@ -127,7 +120,7 @@ export function usePublicBoard(backend: PublicBackend, myNumber: number | null) 
       ? channel.health
       : null;
   const connection = useConnectionState(health);
-  // 목록(수령 가능·최근 수령 완료)과 회차 변경은 화면이 보이는 동안 10~15초마다 갱신한다.
+  // 목록(수령 가능·준비 중)과 회차 변경은 화면이 보이는 동안 10~15초마다 갱신한다.
   // 실시간 연결이 끊긴 경우에도 같은 주기로 내 번호 상태까지 함께 확인된다.
   usePolling(phase !== "loading", refreshLatest);
 
@@ -135,10 +128,10 @@ export function usePublicBoard(backend: PublicBackend, myNumber: number | null) 
     const all = [...rows.values()];
     return {
       ready: readyList(all),
-      pickedUp: pickedUpList(all, pickedLimit),
+      preparing: preparingList(all),
       mine: myNumber === null ? null : (all.find((r) => r.order_number === myNumber) ?? null),
     };
-  }, [rows, pickedLimit, myNumber]);
+  }, [rows, myNumber]);
 
   let lookupState: LookupState = "idle";
   if (myNumber !== null) {
@@ -153,11 +146,9 @@ export function usePublicBoard(backend: PublicBackend, myNumber: number | null) 
     connection,
     lastSyncedAt,
     ready: view.ready,
-    pickedUp: view.pickedUp,
-    hasMorePicked,
+    preparing: view.preparing,
     mine: view.mine,
     lookupState,
-    loadMorePicked: () => setPickedLimit((l) => l + RECENT_PICKED_UP_PAGE),
     retry: refreshLatest,
   };
 }

@@ -4,9 +4,6 @@ import type { Menu } from "./types";
 export const ORDER_NUMBER_MIN = 1;
 export const ORDER_NUMBER_MAX = 9999;
 
-/** 최근 수령 완료 목록 한 번에 보여주는 개수 */
-export const RECENT_PICKED_UP_PAGE = 20;
-
 /**
  * 주기 조회 간격(ms). 매번 이 범위에서 무작위로 고른다.
  * - 손님: 목록(수령 가능·최근 수령 완료)을 항상 이 주기로 갱신 (내 번호는 실시간)

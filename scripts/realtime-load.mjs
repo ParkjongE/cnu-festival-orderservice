@@ -59,7 +59,7 @@ await Promise.all(
         .on("broadcast", { event: "changed" }, () => {
           // 앱과 같게: 신호를 받으면 서버에서 다시 조회하고, '조리 완료'가 보이는 순간까지를 잰다
           if (!sentAt.has(o.order_number) || seen.has(o.order_number)) return;
-          void c.rpc("public_board", { p_picked_limit: 1, p_my_number: o.order_number }).then(({ data }) => {
+          void c.rpc("public_board", { p_my_number: o.order_number }).then(({ data }) => {
             if (data?.mine?.status === "ready" && !seen.has(o.order_number)) {
               seen.add(o.order_number);
               latency.push(Date.now() - sentAt.get(o.order_number));
@@ -83,7 +83,7 @@ const pollers = POLL
         await sleep(10_000 + Math.random() * 5_000);
         if (!polling) break;
         polls++;
-        const { error } = await c.rpc("public_board", { p_picked_limit: 20, p_my_number: orders[i].order_number });
+        const { error } = await c.rpc("public_board", { p_my_number: orders[i].order_number });
         if (error) pollErrors++;
       }
     })

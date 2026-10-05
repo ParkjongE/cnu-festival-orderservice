@@ -21,12 +21,9 @@ export function readyList(rows: Iterable<PublicOrderStatus>): PublicOrderStatus[
     .sort((a, b) => ts(a.ready_at) - ts(b.ready_at) || a.order_number - b.order_number);
 }
 
-/** 최근 수령 완료: 실제 수령 완료 시각 최신 순 */
-export function pickedUpList(rows: Iterable<PublicOrderStatus>, limit: number): PublicOrderStatus[] {
-  return [...rows]
-    .filter((r) => r.status === "picked_up")
-    .sort((a, b) => ts(b.picked_up_at) - ts(a.picked_up_at) || b.order_number - a.order_number)
-    .slice(0, limit);
+/** 준비 중: 번호 순 (부스가 얼마나 바쁜지 보여주는 용도. 번호 순서와 완료 순서는 다를 수 있다) */
+export function preparingList(rows: Iterable<PublicOrderStatus>): PublicOrderStatus[] {
+  return [...rows].filter((r) => r.status === "preparing").sort((a, b) => a.order_number - b.order_number);
 }
 
 export type StaffTab = "preparing" | "ready" | "picked_up" | "canceled";

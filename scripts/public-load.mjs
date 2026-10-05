@@ -26,7 +26,7 @@ const errors = new Map();
 
 async function board(c, n) {
   const t = performance.now();
-  const { error } = await c.rpc("public_board", { p_picked_limit: 20, p_my_number: n });
+  const { error } = await c.rpc("public_board", { p_my_number: n });
   if (error) {
     fail++;
     errors.set(error.message, (errors.get(error.message) ?? 0) + 1);
@@ -41,7 +41,7 @@ const t0 = performance.now();
 await Promise.all(clients.map((c, i) => board(c, 1 + i)));
 console.log(`   ${Math.round(performance.now() - t0)}ms 만에 완료 (성공 ${ok}, 실패 ${fail})`);
 
-const { data: b0 } = await clients[0].rpc("public_board", { p_picked_limit: 1, p_my_number: null });
+const { data: b0 } = await clients[0].rpc("public_board", { p_my_number: null });
 const sessionId = b0?.service?.session_id ?? "load-test";
 console.log(`2) 실시간 구독 ${CLIENTS}개 (Broadcast)`);
 let subOk = 0;

@@ -3,7 +3,7 @@
  * (예: 한 탭은 /demo/admin, 다른 탭은 /demo 로 열면 실시간 반영을 확인할 수 있다.)
  * 운영 Supabase 와는 연결되지 않으며, 화면에는 항상 '데모' 배지를 표시한다.
  */
-import { pickedUpList, readyList } from "@/lib/domain/board";
+import { preparingList, readyList } from "@/lib/domain/board";
 import { seoulDate } from "@/lib/domain/time";
 import type { PublicServiceState, StaffOrder } from "@/lib/domain/types";
 import type { ChannelHealth, PublicBackend, StaffBackend, StaffUser } from "../types";
@@ -184,16 +184,14 @@ function subscribeDemo(onMessage: (m: Message) => void, onHealth: (h: ChannelHea
 export function createDemoPublicBackend(): PublicBackend {
   return {
     kind: "demo",
-    getBoard: (limit, myNumber) =>
+    getBoard: (myNumber) =>
       network(() => {
         const state = load();
         const rows = engine.publicRows(state);
-        const picked = pickedUpList(rows, limit + 1);
         return {
           service: state.service,
           ready: readyList(rows),
-          pickedUp: picked.slice(0, limit),
-          hasMorePickedUp: picked.length > limit,
+          preparing: preparingList(rows),
           mine: myNumber === null ? null : (rows.find((r) => r.order_number === myNumber) ?? null),
         };
       }),

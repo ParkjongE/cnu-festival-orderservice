@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeByRevision, pickedUpList, readyList, staffTabList } from "@/lib/domain/board";
+import { mergeByRevision, preparingList, readyList, staffTabList } from "@/lib/domain/board";
 import { parseOrderNumber } from "@/lib/domain/order-number";
 import { transitionAction, undoTarget } from "@/lib/domain/transitions";
 import { seoulDate } from "@/lib/domain/time";
@@ -64,13 +64,9 @@ describe("공개 목록", () => {
     ];
     expect(readyList(rows).map((r) => r.order_number)).toEqual([24, 18]);
   });
-  it("최근 수령 완료는 실제 수령 시각 최신 순으로 개수를 제한한다", () => {
-    const rows = [
-      row(1, "picked_up", { picked_up_at: "2026-10-05T01:00:00Z" }),
-      row(2, "picked_up", { picked_up_at: "2026-10-05T01:10:00Z" }),
-      row(3, "picked_up", { picked_up_at: "2026-10-05T01:05:00Z" }),
-    ];
-    expect(pickedUpList(rows, 2).map((r) => r.order_number)).toEqual([2, 3]);
+  it("준비 중은 번호 순으로, 다른 상태는 빠진다", () => {
+    const rows = [row(30, "preparing"), row(7, "preparing"), row(12, "ready"), row(9, "picked_up"), row(15, "preparing")];
+    expect(preparingList(rows).map((r) => r.order_number)).toEqual([7, 15, 30]);
   });
   it("오래된 revision 이벤트는 최신 상태를 덮어쓰지 않는다", () => {
     const map = new Map([["o1", row(1, "picked_up", { revision: 3 })]]);

@@ -23,8 +23,8 @@ export type ChannelHealth = "live" | "down" | "idle";
 export interface PublicBoardSnapshot {
   service: PublicServiceState;
   ready: PublicOrderStatus[];
-  pickedUp: PublicOrderStatus[];
-  hasMorePickedUp: boolean;
+  /** 주문이 들어와 준비 중인 번호 (번호 순) */
+  preparing: PublicOrderStatus[];
   /** 요청한 내 번호의 현재 회차 상태. 등록되지 않았으면 null */
   mine: PublicOrderStatus | null;
 }
@@ -38,8 +38,8 @@ export interface PublicSubscription {
 /** 손님 화면이 쓰는 읽기 전용 인터페이스 */
 export interface PublicBackend {
   kind: BackendKind;
-  /** 회차 정보 + 수령 가능 + 최근 수령 완료 + 내 번호를 요청 한 번으로 가져온다. */
-  getBoard(pickedUpLimit: number, myNumber: number | null): Promise<PublicBoardSnapshot>;
+  /** 회차 정보 + 수령 가능 + 준비 중 + 내 번호를 요청 한 번으로 가져온다. */
+  getBoard(myNumber: number | null): Promise<PublicBoardSnapshot>;
   listMenus(): Promise<Menu[]>;
   /**
    * '내 번호' 채널(Broadcast)만 구독한다. 상태가 바뀌면 DB 가 이 채널에 신호를 보낸다.

@@ -16,8 +16,8 @@ type BoardRow = Pick<PublicOrderStatus, "order_id" | "order_number" | "revision"
 
 interface BoardResponse {
   service: PublicServiceState | null;
-  ready: BoardRow[];
-  picked_up: BoardRow[];
+  ready?: BoardRow[];
+  preparing?: BoardRow[];
   mine: BoardRow | null;
 }
 
@@ -41,22 +41,18 @@ export function createSupabasePublicBackend(): PublicBackend {
   return {
     kind: "supabase",
 
-    async getBoard(pickedUpLimit, myNumber): Promise<PublicBoardSnapshot> {
-      const { data, error } = await sb().rpc("public_board", {
-        p_picked_limit: pickedUpLimit,
-        p_my_number: myNumber,
-      });
+    async getBoard(myNumber): Promise<PublicBoardSnapshot> {
+      const { data, error } = await sb().rpc("public_board", { p_my_number: myNumber });
       if (error) throw error;
       const res = data as BoardResponse;
       const service = res.service ?? EMPTY_SERVICE;
       const sid = service.is_open ? service.session_id : null;
-      if (!sid) return { service, ready: [], pickedUp: [], hasMorePickedUp: false, mine: null };
+      if (!sid) return { service, ready: [], preparing: [], mine: null };
       const at = new Date().toISOString();
       return {
         service,
-        ready: res.ready.map((r) => toStatus(r, sid, at)),
-        pickedUp: res.picked_up.slice(0, pickedUpLimit).map((r) => toStatus(r, sid, at)),
-        hasMorePickedUp: res.picked_up.length > pickedUpLimit,
+        ready: (res.ready ?? []).map((r) => toStatus(r, sid, at)),
+        preparing: (res.preparing ?? []).map((r) => toStatus(r, sid, at)),
         mine: res.mine ? toStatus(res.mine, sid, at) : null,
       };
     },

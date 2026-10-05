@@ -238,20 +238,22 @@ describe("public_board (손님 한 번 조회)", () => {
   type Board = {
     service: { session_id: string | null; is_open: boolean };
     ready: Record<string, unknown>[];
-    picked_up: unknown[];
+    preparing: Record<string, unknown>[];
     mine: Record<string, unknown> | null;
   };
-  const board = async (limit = 20, mine: number | null = null) =>
-    (await as<{ b: Board }>(db, anon, `select public.public_board($1, $2) as b`, [limit, mine]))[0].b;
+  const board = async (mine: number | null = null) =>
+    (await as<{ b: Board }>(db, anon, `select public.public_board($1) as b`, [mine]))[0].b;
 
-  it("익명 사용자가 회차·목록·내 번호를 한 번에 받고, 민감 정보는 없다", async () => {
+  it("익명 사용자가 회차·수령 가능·준비 중·내 번호를 한 번에 받고, 민감 정보는 없다", async () => {
     const sid = await openSession();
     const a = (await createOrder(sid, 23, [{ menu_id: "lasagna", quantity: 1 }], "비밀 메모")).order!;
     const b = (await createOrder(sid, 24)).order!;
+    await createOrder(sid, 5);
     await move(b, "ready");
-    const res = await board(20, 23);
+    const res = await board(23);
     expect(res.service).toMatchObject({ session_id: sid, is_open: true });
     expect(res.ready.map((r) => r.order_number)).toEqual([24]);
+    expect(res.preparing.map((r) => r.order_number)).toEqual([5, 23]);
     expect(res.mine).toMatchObject({ order_id: a.id, status: "preparing" });
     expect(Object.keys(res.mine!).sort()).toEqual([
       "order_id",
@@ -262,23 +264,23 @@ describe("public_board (손님 한 번 조회)", () => {
       "status",
     ]);
     expect(JSON.stringify(res)).not.toContain("비밀 메모");
-    expect((await board(20, 99)).mine).toBeNull();
+    expect((await board(99)).mine).toBeNull();
   });
 
-  it("최근 수령 완료는 limit+1 개까지(더 보기 판단용), 종료된 회차는 비어 있다", async () => {
+  it("수령 완료·취소는 목록에 없고, 종료된 회차는 비어 있다", async () => {
     const sid = await openSession();
-    for (const n of [1, 2, 3]) {
-      const o = (await createOrder(sid, n)).order!;
-      const r = (await move(o, "ready")).order!;
-      await move(r, "picked_up");
-    }
-    expect((await board(2)).picked_up).toHaveLength(3);
+    const o = (await createOrder(sid, 1)).order!;
+    const r = (await move(o, "ready")).order!;
+    await move(r, "picked_up");
+    const c = (await createOrder(sid, 2)).order!;
+    await move(c, "canceled");
+    expect(await board()).toMatchObject({ ready: [], preparing: [] });
     await rpc(staff(), "staff_close_session", [sid]);
-    const closed = await board(20, 1);
+    const closed = await board(1);
     expect(closed).toMatchObject({
       service: { session_id: sid, is_open: false },
       ready: [],
-      picked_up: [],
+      preparing: [],
       mine: null,
     });
   });
