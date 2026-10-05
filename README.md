@@ -113,6 +113,12 @@ scripts/realtime-load.mjs  동시 연결·반영 지연 측정
 - 번호: `UNIQUE(session_id, order_number)`, 범위 1~9999 (`src/lib/domain/constants.ts` 와 마이그레이션을 함께 수정).
 - 열린 회차 1개: `service_sessions` 부분 UNIQUE 인덱스.
 
+### 기다리는 동안 도구 (손님 화면, 이 기기에만 저장)
+
+- **화면 켜 두기**: Screen Wake Lock. 주문이 준비 중·조리 완료인 동안만 켜지고, 수령 완료·취소 시 자동 해제. 다른 앱에 갔다 돌아오면 다시 요청한다. 지원하지 않는 브라우저에서는 버튼이 보이지 않는다.
+- **완료되면 소리·진동** (기본 꺼짐): 화면을 보고 있는 동안 ‘준비 중 → 조리 완료’로 바뀌는 순간 ‘띵동’ 두 번(Web Audio 합성, 음원 파일 없음) + 진동(Android). iPhone 은 웹 진동이 없고 무음 모드면 소리도 나지 않는다. 처음 열었을 때 이미 완료 상태면 울리지 않는다.
+- 화면을 닫거나 잠그면 어떤 알림도 오지 않는다(웹 푸시 미구현).
+
 ### 지원 브라우저
 
 Next.js 16·Tailwind 4 기준 **iOS Safari 16.4+, Android Chrome 111+** (iPhone 8 이후 + iOS 업데이트). 더 오래된 브라우저에서는 앱이 시작되지 않으므로, 옛 문법 스크립트가 기능을 검사해 “업데이트하거나 부스에서 번호를 확인해주세요” 안내를 띄웁니다(`src/components/LegacyBrowserNotice.tsx`). CSP·HSTS·COOP 헤더는 지원하지 않는 브라우저에서는 무시될 뿐 접속을 막지 않습니다.

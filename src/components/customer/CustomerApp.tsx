@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DEFAULT_MENUS } from "@/lib/domain/constants";
 import { formatClock } from "@/lib/domain/time";
 import type { Menu } from "@/lib/domain/types";
 import type { PublicBackend } from "@/lib/backend/types";
 import { usePublicBoard } from "@/hooks/usePublicBoard";
+import { useDeviceFlag, useWakeLock } from "@/hooks/useWaitTools";
+import { playReadyAlert } from "@/lib/alert";
 import { useStoredSelection } from "@/hooks/useStoredSelection";
 import type { ConnectionState } from "@/hooks/sync";
 import { CheckerStrip, CustomerHeader, DemoBadge } from "@/components/brand/Brand";
 import { InfoIcon, SignalOffIcon } from "@/components/ui/icons";
 import { MenuSection, PreparingBoard, ReadyBoard } from "./Boards";
 import { ErrorCard, LoadingCard, NumberForm, RestingCard, StatusCard } from "./MyOrderCard";
+import { WaitTools } from "./WaitTools";
 
 function ConnectionLine({
   connection,
@@ -83,6 +86,25 @@ export function CustomerApp({ backend, demoControls }: { backend: PublicBackend;
   const sessionMismatch = Boolean(selection && openSessionId && selection.sessionId !== openSessionId);
   const activeNumber = selection && !sessionMismatch && openSessionId ? selection.number : null;
 
+  // 기다리는 동안 도구: 화면 켜 두기 · 완료 알림 (이 기기에만 저장)
+  const [wakeWanted, setWakeWanted] = useDeviceFlag("ytd-pref-wake");
+  const [alertOn, setAlertOn] = useDeviceFlag("ytd-pref-alert");
+  const myStatus = activeNumber !== null ? board.mine?.status : undefined;
+  const waiting = myStatus === "preparing" || myStatus === "ready";
+  // 수령 완료·취소가 되면 화면 켜 두기는 자동으로 풀린다
+  const wake = useWakeLock(wakeWanted, waiting && board.connection !== "offline");
+
+  // '준비 중' → '조리 완료'로 바뀌는 순간(화면을 보고 있을 때)에만 알린다. 처음 열었을 때 이미 완료면 울리지 않는다.
+  const lastSeen = useRef<{ key: string; status?: string } | null>(null);
+  useEffect(() => {
+    const key = `${openSessionId}:${activeNumber}`;
+    const prev = lastSeen.current;
+    lastSeen.current = { key, status: myStatus };
+    if (alertOn && prev?.key === key && prev.status === "preparing" && myStatus === "ready") {
+      void playReadyAlert();
+    }
+  }, [openSessionId, activeNumber, myStatus, alertOn]);
+
   const card = useMemo(() => {
     if (!hydrated || board.phase === "loading") return <LoadingCard />;
     if (board.phase === "error") return <ErrorCard onRetry={board.retry} />;
@@ -129,9 +151,23 @@ export function CustomerApp({ backend, demoControls }: { backend: PublicBackend;
 
         {card}
 
+        {waiting && (
+          <WaitTools
+            wakeSupported={wake.supported}
+            wakeWanted={wakeWanted}
+            wakeHeld={wake.held}
+            onWake={setWakeWanted}
+            alertOn={alertOn}
+            onAlert={setAlertOn}
+          />
+        )}
+
         <p className="mt-4 flex items-start gap-2 px-1 text-[0.95rem] leading-snug text-muted">
           <InfoIcon className="mt-0.5 h-5 w-5 shrink-0 text-green" />
-          <span>이 페이지에서 완료 여부를 확인해주세요. 화면을 닫거나 잠그면 별도 알림은 오지 않아요.</span>
+          <span>
+            이 페이지에서 완료 여부를 확인해주세요. 화면을 닫거나 잠그면 알림은 오지 않아요.
+            {waiting ? " ‘화면 켜 두기’를 켜 두면 놓치지 않아요." : ""}
+          </span>
         </p>
 
         {openSessionId && board.phase === "ready" && (
