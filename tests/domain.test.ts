@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeByRevision, preparingList, readyList, staffTabList } from "@/lib/domain/board";
+import { mergeByRevision, nextOrderNumber, preparingList, readyList, staffTabList } from "@/lib/domain/board";
 import { parseOrderNumber } from "@/lib/domain/order-number";
 import { transitionAction, undoTarget } from "@/lib/domain/transitions";
 import { seoulDate } from "@/lib/domain/time";
@@ -98,5 +98,15 @@ describe("서울 기준 날짜", () => {
   it("UTC 15:00 이후는 다음 날이다", () => {
     expect(seoulDate(new Date("2026-10-05T14:59:00Z"))).toBe("2026-10-05");
     expect(seoulDate(new Date("2026-10-05T15:00:00Z"))).toBe("2026-10-06");
+  });
+});
+
+describe("다음 일련번호", () => {
+  it("새 회차는 1, 이후에는 가장 큰 번호 + 1, 범위를 넘으면 null", () => {
+    expect(nextOrderNumber([])).toBe(1);
+    expect(nextOrderNumber([{ order_number: 1 }, { order_number: 2 }])).toBe(3);
+    // 직원이 중간에 50번을 직접 넣었으면 다음은 51 (이미 쓴 번호와 겹치지 않음)
+    expect(nextOrderNumber([{ order_number: 3 }, { order_number: 50 }, { order_number: 4 }])).toBe(51);
+    expect(nextOrderNumber([{ order_number: 9999 }])).toBeNull();
   });
 });

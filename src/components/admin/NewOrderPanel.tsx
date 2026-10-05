@@ -15,16 +15,22 @@ export function NewOrderPanel({
   backend,
   sessionId,
   menus,
+  suggestedNumber,
   onCreated,
   onShowOrder,
 }: {
   backend: StaffBackend;
   sessionId: string;
   menus: Menu[];
+  /** 미리 채울 다음 일련번호 (이번 회차 최대 번호 + 1). 직원이 고치면 고친 값을 쓴다. */
+  suggestedNumber: number | null;
   onCreated: (o: StaffOrder) => void;
   onShowOrder: (o: StaffOrder) => void;
 }) {
-  const [number, setNumber] = useState("");
+  // edited 가 아니면 다음 일련번호를 보여준다. 직접 고치거나 저장에 실패하면 그 값을 고정한다.
+  const [edited, setEdited] = useState(false);
+  const [typed, setTyped] = useState("");
+  const number = edited ? typed : suggestedNumber !== null ? String(suggestedNumber) : "";
   const [qty, setQty] = useState<Record<string, number>>({});
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -59,6 +65,9 @@ export function NewOrderPanel({
       return;
     }
     requestId.current ??= crypto.randomUUID();
+    // 저장하는 동안 다른 기기의 등록으로 제안 번호가 바뀌어도, 지금 보내는 번호를 고정한다
+    setTyped(number);
+    setEdited(true);
     setSaving(true);
     setProblem(null);
     const items = Object.entries(qty)
@@ -81,7 +90,8 @@ export function NewOrderPanel({
     if (res.ok) {
       onCreated(res.order);
       requestId.current = null;
-      setNumber("");
+      setTyped("");
+      setEdited(false); // 다음 일련번호로 자동으로 넘어간다
       setQty({});
       setNote("");
       setShowMore(false);
@@ -122,8 +132,11 @@ export function NewOrderPanel({
           value={number}
           onChange={(e) => {
             touched();
-            setNumber(sanitizeOrderNumberInput(e.target.value));
+            setEdited(true);
+            setTyped(sanitizeOrderNumberInput(e.target.value));
           }}
+          // 누르면 전체 선택 → 바로 다른 번호를 입력하면 덮어쓴다
+          onFocus={(e) => e.currentTarget.select()}
           inputMode="numeric"
           pattern="[0-9]*"
           autoComplete="off"
@@ -158,6 +171,26 @@ export function NewOrderPanel({
           )}
         </div>
       )}
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-2 text-sm text-muted">
+        {edited && suggestedNumber !== null && number !== String(suggestedNumber) ? (
+          <>
+            직접 입력한 번호예요.
+            <button
+              type="button"
+              onClick={() => {
+                touched();
+                setEdited(false);
+                setTyped("");
+              }}
+              className="font-bold text-ink underline underline-offset-2"
+            >
+              다음 번호({suggestedNumber})로 되돌리기
+            </button>
+          </>
+        ) : (
+          "다음 번호가 자동으로 채워져요. 다른 번호면 눌러서 바꿔 입력하세요."
+        )}
+      </p>
       {done && !problem && (
         <p role="status" className="mt-2 text-sm font-bold text-green">
           ✓ {done}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { nextOrderNumber } from "@/lib/domain/board";
 import { formatClock, formatServiceDate } from "@/lib/domain/time";
 import type { ServiceSession, StaffOrder } from "@/lib/domain/types";
 import type { StaffBackend, StaffUser } from "@/lib/backend/types";
@@ -123,6 +124,8 @@ function Console({
   }, [board.orders]);
 
   const detail = detailId ? (board.orders.get(detailId) ?? null) : null;
+  // 주문 등록 칸에 미리 채울 다음 일련번호 (새 회차면 1)
+  const nextNumber = useMemo(() => nextOrderNumber(board.orders.values()), [board.orders]);
   // 취소 확인창은 항상 최신 revision 의 주문으로 요청한다
   const cancelTarget = cancelId ? (board.orders.get(cancelId) ?? null) : null;
   const session = board.session;
@@ -220,6 +223,7 @@ function Console({
                   backend={backend}
                   sessionId={session.id}
                   menus={board.menus}
+                  suggestedNumber={nextNumber}
                   onCreated={(o) => applyOrder(o)}
                   onShowOrder={(o) => {
                     applyOrder(o);

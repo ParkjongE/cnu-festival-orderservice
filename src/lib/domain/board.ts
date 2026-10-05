@@ -1,3 +1,4 @@
+import { ORDER_NUMBER_MAX, ORDER_NUMBER_MIN } from "./constants";
 import type { PublicOrderStatus, StaffOrder } from "./types";
 
 const ts = (v: string | null | undefined) => (v ? Date.parse(v) : 0);
@@ -56,4 +57,15 @@ export function toPublicStatus(o: StaffOrder): PublicOrderStatus {
     picked_up_at: o.picked_up_at,
     updated_at: o.updated_at,
   };
+}
+
+/**
+ * 주문 등록 칸에 미리 채울 다음 번호: 이번 회차에서 가장 큰 번호 + 1 (주문이 없으면 1).
+ * 직원이 중간에 다른 번호를 직접 넣어도 다음 제안은 그 뒤 번호라 이미 쓴 번호와 겹치지 않는다.
+ * 범위를 넘으면 null(직접 입력).
+ */
+export function nextOrderNumber(orders: Iterable<Pick<StaffOrder, "order_number">>): number | null {
+  let max = ORDER_NUMBER_MIN - 1;
+  for (const o of orders) if (o.order_number > max) max = o.order_number;
+  return max + 1 <= ORDER_NUMBER_MAX ? max + 1 : null;
 }
